@@ -51,9 +51,9 @@ handle_info(Msg, ConnPid) ->
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
 
-%% TODO: subscribe to events https://dev.twitch.tv/docs/chat/authenticating/#setting-up-eventsub-subscriptions
 handle_cast({subscribe, WebsocketSessionId}, State) ->
-    logger:notice(#{got_websocket_session_id => WebsocketSessionId}),
+    {ok, Body} = twitch:subscribe(WebsocketSessionId),
+    logger:notice(#{got_subscribe_body => Body}),
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
