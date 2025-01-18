@@ -41,8 +41,6 @@ get_key(Key, Map) ->
             {ok, Val}
     end.
 
-%% TODO: Parse session_keepalive https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#keepalive-message
-%% TODO: Parse chat message https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelchatmessage
 message_action(~"session_welcome", TwitchMessage) ->
     maybe
         {ok, Payload} = get_key(~"payload", TwitchMessage),
