@@ -28,13 +28,18 @@ init([]) ->
 handle_info({gun_upgrade, ConnPid, _StreamRef, [<<"websocket">>], _Headers}, ConnPid) ->
     logger:notice(#{connection => upgraded}),
     {noreply, ConnPid};
-%% TODO: Next, parse https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#welcome-message
-%% for the payload.session.id and send ourselves a message to subscribe to events
-%% https://dev.twitch.tv/docs/chat/authenticating/#setting-up-eventsub-subscriptions
 handle_info({gun_ws, ConnPid, _StreamRef, {text, Bin}}, ConnPid) ->
     case utils_json:decode(Bin) of
-        {ok, Map} ->
-            logger:notice(#{got_websocket_data => Map});
+        {ok, TwitchMessage} ->
+            maybe
+                {ok, MessageType} = twitch:parse_message_type(TwitchMessage),
+                logger:notice(#{got_twitch_message => MessageType}),
+                {ok, MessageAction} = twitch:message_action(MessageType, TwitchMessage),
+                gen_server:cast(self(), MessageAction)
+            else
+                {error, _} ->
+                    logger:notice(#{unable_to_action => TwitchMessage})
+            end;
         {error, _} ->
             logger:notice(#{unable_to_parse => Bin})
     end,
@@ -46,6 +51,10 @@ handle_info(Msg, ConnPid) ->
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
 
+%% TODO: subscribe to events https://dev.twitch.tv/docs/chat/authenticating/#setting-up-eventsub-subscriptions
+handle_cast({subscribe, WebsocketSessionId}, State) ->
+    logger:notice(#{got_websocket_session_id => WebsocketSessionId}),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
