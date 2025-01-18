@@ -1,0 +1,17 @@
+{application, focus, [
+    {description, "An OTP application"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {focus_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        restc,
+        gun,
+        ssl
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]},
+    {links, []}
+]}.
