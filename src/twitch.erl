@@ -54,11 +54,7 @@ parse_message_type(TwitchMessage) ->
             {error, unable_to_parse}
     end.
 
-%% curl -X POST 'https://api.twitch.tv/helix/eventsub/subscriptions' \
-%% -H 'Authorization: Bearer 2gbdx6oar67tqtcmt49t3wpcgycthx' \
-%% -H 'Client-Id: wbmytr93xzw8zbg0p1izqyzzc5mbiz' \
-%% -H 'Content-Type: application/json' \
-%% -d '{"type":"channel.follow","version":"2","condition":{"broadcaster_user_id":"1234", "moderator_user_id": "1234"},"transport":{"method":"webhook","callback":"https://example.com/callback","secret":"s3cre77890ab"}}'
+%% Example: https://dev.twitch.tv/docs/api/reference/#create-eventsub-subscription
 subscribe(WebsocketSessionId) ->
     maybe
         {ok, TwitchEnv} = get_twitch_env(),
