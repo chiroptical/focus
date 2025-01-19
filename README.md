@@ -8,7 +8,7 @@ Developed live on [![Chiroptical](https://img.shields.io/badge/twitch.tv-chiropt
 TODO
 ---
 
-- [ ] Handle `session_keepalive` in `twitch:message_action/2` https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#keepalive-message
+- [x] Handle `session_keepalive` in `twitch:message_action/2` https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#keepalive-message
 - [ ] Handle `channel.chat.message` in `twitch:message_action/2` https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelchatmessage
 - [ ] Subscribe to `channel.follow` in `twitch:subscribe/1` https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelfollow
 - [ ] Handle `channel.follow` in `twitch:message_action/2`

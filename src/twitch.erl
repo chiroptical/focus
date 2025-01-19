@@ -42,7 +42,18 @@ message_action(~"session_welcome", TwitchMessage) ->
     else
         error ->
             {error, no_websocket_session_id}
-    end.
+    end;
+message_action(~"session_keepalive", TwitchMessage) ->
+    maybe
+        {ok, Metadata} = maps:find(~"metadata", TwitchMessage),
+        {ok, Timestamp} = maps:find(~"message_timestamp", Metadata),
+        {ok, {timestamp, Timestamp}}
+    else
+        error ->
+            {error, no_websocket_session_id}
+    end;
+message_action(Msg, _TwitchMessage) ->
+    {error, {unknown_message, Msg}}.
 
 parse_message_type(TwitchMessage) ->
     maybe
