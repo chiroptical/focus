@@ -33,19 +33,11 @@ get_twitch_env() ->
         Err = {error, {key_not_set, _}} -> Err
     end.
 
-get_key(Key, Map) ->
-    case maps:get(Key, Map, key_doesnt_exist) of
-        key_doesnt_exist ->
-            error;
-        Val ->
-            {ok, Val}
-    end.
-
 message_action(~"session_welcome", TwitchMessage) ->
     maybe
-        {ok, Payload} = get_key(~"payload", TwitchMessage),
-        {ok, Session} = get_key(~"session", Payload),
-        {ok, Id} = get_key(~"id", Session),
+        {ok, Payload} = maps:find(~"payload", TwitchMessage),
+        {ok, Session} = maps:find(~"session", Payload),
+        {ok, Id} = maps:find(~"id", Session),
         {ok, {subscribe, Id}}
     else
         error ->
@@ -54,8 +46,8 @@ message_action(~"session_welcome", TwitchMessage) ->
 
 parse_message_type(TwitchMessage) ->
     maybe
-        {ok, Metadata} = get_key(~"metadata", TwitchMessage),
-        {ok, MessageType} = get_key(~"message_type", Metadata),
+        {ok, Metadata} = maps:find(~"metadata", TwitchMessage),
+        {ok, MessageType} = maps:find(~"message_type", Metadata),
         {ok, MessageType}
     else
         error ->
@@ -70,9 +62,9 @@ parse_message_type(TwitchMessage) ->
 subscribe(WebsocketSessionId) ->
     maybe
         {ok, TwitchEnv} = get_twitch_env(),
-        {ok, UserAccessToken} = get_key(user_access_token, TwitchEnv),
-        {ok, ClientId} = get_key(client_id, TwitchEnv),
-        {ok, UserId} = get_key(user_id, TwitchEnv),
+        {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
+        {ok, ClientId} = maps:find(client_id, TwitchEnv),
+        {ok, UserId} = maps:find(user_id, TwitchEnv),
         {ok, 202, _Headers, Body} = restc:request(
             post,
             json,
@@ -107,7 +99,7 @@ subscribe(WebsocketSessionId) ->
 auth() ->
     maybe
         {ok, TwitchEnv} = get_twitch_env(),
-        {ok, UserAccessToken} = get_key(user_access_token, TwitchEnv),
+        {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
         {ok, 200, _Headers, Body} =
             restc:request(
                 get,
