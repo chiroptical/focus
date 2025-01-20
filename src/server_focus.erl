@@ -53,11 +53,14 @@ handle_call(_Msg, _From, State) ->
 
 handle_cast({subscribe, WebsocketSessionId}, State) ->
     {ok, Body} = twitch:subscribe(WebsocketSessionId),
-    logger:notice(#{got_subscribe_body => Body}),
+    logger:notice(#{got_subscribe => Body}),
     {noreply, State};
-handle_cast({timestamp, Timestamp}, State) ->
+handle_cast({keepalive, Timestamp}, State) ->
     % TODO: Ideally, we would store the latest and check if it is still alive
-    logger:notice(#{got_timestamp => Timestamp}),
+    logger:notice(#{got_keepalive => Timestamp}),
+    {noreply, State};
+handle_cast({notification, Type, Event}, State) ->
+    logger:notice(#{got_notification => Type, event => Event}),
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.

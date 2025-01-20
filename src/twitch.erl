@@ -33,6 +33,7 @@ get_twitch_env() ->
         Err = {error, {key_not_set, _}} -> Err
     end.
 
+% Session welcome https://dev.twitch.tv/docs/eventsub/websocket-reference/#welcome-message
 message_action(~"session_welcome", TwitchMessage) ->
     maybe
         {ok, Payload} = maps:find(~"payload", TwitchMessage),
@@ -41,16 +42,31 @@ message_action(~"session_welcome", TwitchMessage) ->
         {ok, {subscribe, Id}}
     else
         error ->
-            {error, no_websocket_session_id}
+            {error, no_websocket_session_id_from_session_welcome}
     end;
+% Session keepalive https://dev.twitch.tv/docs/eventsub/websocket-reference/#keepalive-message
 message_action(~"session_keepalive", TwitchMessage) ->
     maybe
         {ok, Metadata} = maps:find(~"metadata", TwitchMessage),
         {ok, Timestamp} = maps:find(~"message_timestamp", Metadata),
-        {ok, {timestamp, Timestamp}}
+        {ok, {keepalive, Timestamp}}
     else
         error ->
-            {error, no_websocket_session_id}
+            {error, no_timestamp_from_session_keepalive}
+    end;
+% Notification message https://dev.twitch.tv/docs/eventsub/websocket-reference/#notification-message
+message_action(~"notification", TwitchMessage) ->
+    maybe
+        {ok, Payload} = maps:find(~"payload", TwitchMessage),
+        % Get the message type
+        {ok, Subscription} = maps:find(~"subscription", Payload),
+        {ok, Type} = maps:find(~"type", Subscription),
+        % Get the event
+        {ok, Event} = maps:find(~"event", Payload),
+        {ok, {notification, Type, Event}}
+    else
+        error ->
+            {error, no_event_from_notification}
     end;
 message_action(Msg, _TwitchMessage) ->
     {error, {unknown_message, Msg}}.
