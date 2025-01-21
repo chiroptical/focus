@@ -10,8 +10,6 @@
     handle_continue/2
 ]).
 
-% TODO: need a convenient mechanism to stop the server
-
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
@@ -28,7 +26,7 @@ init([]) ->
     {ok, ConnPid, {continue, upgrade_connection}}.
 
 handle_info({gun_upgrade, ConnPid, _StreamRef, [<<"websocket">>], _Headers}, ConnPid) ->
-    logger:notice(#{connection => upgraded}),
+    % logger:notice(#{connection => upgraded}),
     {noreply, ConnPid};
 handle_info({gun_ws, ConnPid, _StreamRef, {text, Bin}}, ConnPid) ->
     case utils_json:decode(Bin) of
@@ -56,11 +54,11 @@ handle_call(_Msg, _From, State) ->
 
 handle_cast({subscribe, WebsocketSessionId}, State) ->
     {ok, _Body} = twitch:subscribe(chat, WebsocketSessionId),
-    gen_server:cast(self(), {subscribe, follows, WebsocketSessionId}),
+    % gen_server:cast(self(), {subscribe, follows, WebsocketSessionId}),
+    %% gen_server:cast(self(), {subscribe, subscribers, WebsocketSessionId})
     {noreply, State};
 handle_cast({subscribe, follows, WebsocketSessionId}, State) ->
     {ok, _Body} = twitch:subscribe(follows, WebsocketSessionId),
-    %% gen_server:cast(self(), {subscribe, subscribers, WebsocketSessionId})
     {noreply, State};
 handle_cast({keepalive, _Timestamp}, State) ->
     % TODO: Ideally, we would store the latest and check if it is still alive
