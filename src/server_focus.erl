@@ -10,6 +10,8 @@
     handle_continue/2
 ]).
 
+% TODO: need a convenient mechanism to stop the server
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
@@ -33,7 +35,8 @@ handle_info({gun_ws, ConnPid, _StreamRef, {text, Bin}}, ConnPid) ->
         {ok, TwitchMessage} ->
             maybe
                 {ok, MessageType} = twitch:parse_message_type(TwitchMessage),
-                logger:notice(#{got_twitch_message => MessageType}),
+                %% TODO: Need to have a debug logger setting
+                %% logger:notice(#{got_twitch_message => MessageType}),
                 {ok, MessageAction} = twitch:message_action(MessageType, TwitchMessage),
                 gen_server:cast(self(), MessageAction)
             else
@@ -55,12 +58,12 @@ handle_cast({subscribe, WebsocketSessionId}, State) ->
     {ok, Body} = twitch:subscribe(WebsocketSessionId),
     logger:notice(#{got_subscribe => Body}),
     {noreply, State};
-handle_cast({keepalive, Timestamp}, State) ->
+handle_cast({keepalive, _Timestamp}, State) ->
     % TODO: Ideally, we would store the latest and check if it is still alive
-    logger:notice(#{got_keepalive => Timestamp}),
+    % logger:notice(#{got_keepalive => Timestamp}),
     {noreply, State};
 handle_cast({notification, Type, Event}, State) ->
-    logger:notice(#{got_notification => Type, event => Event}),
+    twitch:handle_notification(Type, Event),
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.

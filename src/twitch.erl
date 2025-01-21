@@ -4,7 +4,8 @@
     parse_message_type/1,
     message_action/2,
     auth/0,
-    subscribe/1
+    subscribe/1,
+    handle_notification/2
 ]).
 
 get_env(Key) ->
@@ -138,3 +139,19 @@ auth() ->
         {error, Status, _ErrHeaders, ErrBody} ->
             {error, Status, ErrBody}
     end.
+
+handle_notification(~"channel.chat.message", Event) ->
+    maybe
+        {ok, Chatter} = maps:find(~"chatter_user_name", Event),
+        {ok, Color} = maps:find(~"color", Event),
+        {_, Hex} = string:take(binary_to_list(Color), "#"),
+        {ok, Message} = maps:find(~"message", Event),
+        {ok, MessageText} = maps:find(~"text", Message),
+        Chat = io_lib:format("[~s] ~s~n", [color:true(Hex, Chatter), MessageText]),
+        logger:notice(Chat)
+    else
+        {error, _} ->
+            logger:notice(#{unable_to_handle_notification => Event})
+    end;
+handle_notification(Type, _Event) ->
+    logger:notice(#{handle_notification_type_not_implemented => Type}).
