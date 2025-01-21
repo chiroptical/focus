@@ -15,6 +15,11 @@ TODO
 - [ ] Handle `channel.follow` in `twitch:message_action/2`
 - [ ] Subscribe to `channel.subscribe` in `twitch:message_action/2` https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelsubscribe
 - [ ] Handle `channel.subscribe` in `twitch:message_action/2`
+- [ ] Need to add some logger formatting to twitch chat (https://github.com/julianduque/erlang-color?tab=readme-ov-file#true-24-bit-colors) 
+  ```erlang
+  io_lib:format("Hello, this is the ~s color~n", [ color:red("red") ])  
+  ```
+- [ ] Separate logging levels into Twitch and everything else
 - [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
   - [ ] Need an index.html with a single button to start the flow
   - [ ] Redirect user to handle OAuth
