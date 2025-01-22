@@ -5,6 +5,7 @@
     start_link/0,
     enable_debug_messages/0,
     disable_debug_messages/0,
+    follows/0,
     init/1,
     handle_info/2,
     handle_call/3,
@@ -12,7 +13,9 @@
     handle_continue/2
 ]).
 
--record(state, {gun_connection_pid, enable_debug_messages = false, keepalive = none}).
+-record(state, {
+    gun_connection_pid, enable_debug_messages = false, keepalive = none, websocket_session_id = none
+}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -22,6 +25,9 @@ enable_debug_messages() ->
 
 disable_debug_messages() ->
     gen_server:cast(self(), disable_debug_messages).
+
+follows() ->
+    gen_server:cast(self(), {subscribe, follows}).
 
 init([]) ->
     {ok, ConnPid} = gun:open(
@@ -78,11 +84,14 @@ handle_cast(enable_debug_messages, State) ->
 handle_cast(disable_debug_messages, State) ->
     {noreply, State#state{enable_debug_messages = false}};
 % Messages from Twitch
+handle_cast({subscribe, follows}, State) ->
+    {ok, _Body} = twitch:subscribe(follows, State#state.websocket_session_id),
+    {noreply, State};
 handle_cast({subscribe, WebsocketSessionId}, State) ->
     {ok, _Body} = twitch:subscribe(chat, WebsocketSessionId),
-    % gen_server:cast(self(), {subscribe, follows, WebsocketSessionId}),
-    %% gen_server:cast(self(), {subscribe, subscribers, WebsocketSessionId})
-    {noreply, State};
+    gen_server:cast(self(), {subscribe, follows, WebsocketSessionId}),
+    % gen_server:cast(self(), {subscribe, subscribers, WebsocketSessionId})
+    {noreply, State#state{websocket_session_id = WebsocketSessionId}};
 handle_cast({subscribe, follows, WebsocketSessionId}, State) ->
     {ok, _Body} = twitch:subscribe(follows, WebsocketSessionId),
     {noreply, State};

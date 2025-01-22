@@ -82,13 +82,10 @@ parse_message_type(TwitchMessage) ->
             {error, unable_to_parse}
     end.
 
-%% Example: https://dev.twitch.tv/docs/api/reference/#create-eventsub-subscription
-subscribe(follows, WebsocketSessionId) ->
+post202(TwitchEnv, Payload) ->
     maybe
-        {ok, TwitchEnv} = get_twitch_env(),
         {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
         {ok, ClientId} = maps:find(client_id, TwitchEnv),
-        {ok, UserId} = maps:find(user_id, TwitchEnv),
         {ok, 202, _Headers, Body} = restc:request(
             post,
             json,
@@ -98,18 +95,7 @@ subscribe(follows, WebsocketSessionId) ->
                 {~"Authorization", <<"Bearer ", UserAccessToken/binary>>},
                 {~"Client-Id", ClientId}
             ],
-            #{
-                type => ~"channel.follow",
-                version => ~"2",
-                condition => #{
-                    broadcaster_user_id => UserId,
-                    user_id => UserId
-                },
-                transport => #{
-                    method => websocket,
-                    session_id => WebsocketSessionId
-                }
-            },
+            Payload,
             []
         ),
         {ok, Body}
@@ -118,22 +104,36 @@ subscribe(follows, WebsocketSessionId) ->
             Err;
         {error, ErrStatus, _ErrHeaders, ErrBody} ->
             {error, ErrStatus, ErrBody}
+    end.
+
+%% Example: https://dev.twitch.tv/docs/api/reference/#create-eventsub-subscription
+subscribe(follows, WebsocketSessionId) ->
+    maybe
+        {ok, TwitchEnv} = get_twitch_env(),
+        {ok, UserId} = maps:find(user_id, TwitchEnv),
+        {ok, Body} = post202(
+            TwitchEnv,
+            #{
+                type => ~"channel.follow",
+                version => ~"2",
+                condition => #{
+                    broadcaster_user_id => UserId,
+                    moderator_user_id => UserId
+                },
+                transport => #{
+                    method => websocket,
+                    session_id => WebsocketSessionId
+                }
+            }
+        ),
+        {ok, Body}
     end;
 subscribe(chat, WebsocketSessionId) ->
     maybe
         {ok, TwitchEnv} = get_twitch_env(),
-        {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
-        {ok, ClientId} = maps:find(client_id, TwitchEnv),
         {ok, UserId} = maps:find(user_id, TwitchEnv),
-        {ok, 202, _Headers, Body} = restc:request(
-            post,
-            json,
-            "https://api.twitch.tv/helix/eventsub/subscriptions",
-            [202],
-            [
-                {~"Authorization", <<"Bearer ", UserAccessToken/binary>>},
-                {~"Client-Id", ClientId}
-            ],
+        {ok, Body} = post202(
+            TwitchEnv,
             #{
                 type => ~"channel.chat.message",
                 version => ~"1",
@@ -145,15 +145,9 @@ subscribe(chat, WebsocketSessionId) ->
                     method => websocket,
                     session_id => WebsocketSessionId
                 }
-            },
-            []
+            }
         ),
         {ok, Body}
-    else
-        Err = {error, _} ->
-            Err;
-        {error, ErrStatus, _ErrHeaders, ErrBody} ->
-            {error, ErrStatus, ErrBody}
     end.
 
 auth() ->
