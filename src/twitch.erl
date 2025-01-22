@@ -128,6 +128,26 @@ subscribe(follows, WebsocketSessionId) ->
         ),
         {ok, Body}
     end;
+subscribe(subscribers, WebsocketSessionId) ->
+    maybe
+        {ok, TwitchEnv} = get_twitch_env(),
+        {ok, UserId} = maps:find(user_id, TwitchEnv),
+        {ok, Body} = post202(
+            TwitchEnv,
+            #{
+                type => ~"channel.subscribe",
+                version => ~"1",
+                condition => #{
+                    broadcaster_user_id => UserId
+                },
+                transport => #{
+                    method => websocket,
+                    session_id => WebsocketSessionId
+                }
+            }
+        ),
+        {ok, Body}
+    end;
 subscribe(chat, WebsocketSessionId) ->
     maybe
         {ok, TwitchEnv} = get_twitch_env(),
@@ -170,6 +190,24 @@ auth() ->
             {error, Status, ErrBody}
     end.
 
+from_tier(~"1000") ->
+    ~"T1";
+from_tier(~"2000") ->
+    ~"T2";
+from_tier(~"3000") ->
+    ~"T3".
+
+display_subscription(true, Chatter, Tier) ->
+    io_lib:format(
+        "~s was gifted a ~s sub, I appreciate you!~n",
+        [color:true("0096FF", Chatter), from_tier(Tier)]
+    );
+display_subscription(false, Chatter, Tier) ->
+    io_lib:format(
+        "~s subscribed at ~s, I appreciate you!~n",
+        [color:true("0096FF", Chatter), from_tier(Tier)]
+    ).
+
 handle_notification(~"channel.chat.message", Event) ->
     maybe
         {ok, Chatter} = maps:find(~"chatter_user_name", Event),
@@ -183,10 +221,21 @@ handle_notification(~"channel.chat.message", Event) ->
         {error, _} ->
             logger:notice(#{unable_to_handle_notification => Event})
     end;
+handle_notification(~"channel.subscribe", Event) ->
+    maybe
+        {ok, Chatter} = maps:find(~"user_name", Event),
+        {ok, Tier} = maps:find(~"tier", Event),
+        {ok, IsGifted} = maps:find(~"is_gift", Event),
+        Chat = display_subscription(IsGifted, Chatter, Tier),
+        logger:notice(Chat)
+    else
+        {error, _} ->
+            logger:notice(#{unable_to_handle_notification => Event})
+    end;
 handle_notification(~"channel.follow", Event) ->
     maybe
         {ok, Chatter} = maps:find(~"user_name", Event),
-        Chat = io_lib:format("Thanks for following ~s!~n", [color:true("483248", Chatter)]),
+        Chat = io_lib:format("Thanks for following ~s!~n", [color:true("C3B1E1", Chatter)]),
         logger:notice(Chat)
     else
         {error, _} ->

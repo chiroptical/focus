@@ -18,8 +18,8 @@ TODO
   io_lib:format("Hello, this is the ~s color~n", [ color:red("red") ])  
   ```
 - [ ] Break up `twitch:subscribe/2` into more specific functions
-- [ ] Subscribe to `channel.subscribe` in `twitch:message_action/2` https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelsubscribe
-- [ ] Handle `channel.subscribe` in `twitch:message_action/2`
+- [x] Subscribe to `channel.subscribe` in `twitch:message_action/2` https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelsubscribe
+- [x] Handle `channel.subscribe` in `twitch:message_action/2`
 - [ ] Add state to control debug logging, separate logging levels into Twitch and everything else becomes debug logged
 - [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
   - [ ] Need an index.html with a single button to start the flow

@@ -90,10 +90,13 @@ handle_cast({subscribe, follows}, State) ->
 handle_cast({subscribe, WebsocketSessionId}, State) ->
     {ok, _Body} = twitch:subscribe(chat, WebsocketSessionId),
     gen_server:cast(self(), {subscribe, follows, WebsocketSessionId}),
-    % gen_server:cast(self(), {subscribe, subscribers, WebsocketSessionId})
+    gen_server:cast(self(), {subscribe, subscribers, WebsocketSessionId}),
     {noreply, State#state{websocket_session_id = WebsocketSessionId}};
 handle_cast({subscribe, follows, WebsocketSessionId}, State) ->
     {ok, _Body} = twitch:subscribe(follows, WebsocketSessionId),
+    {noreply, State};
+handle_cast({subscribe, subscribers, WebsocketSessionId}, State) ->
+    {ok, _Body} = twitch:subscribe(subscribers, WebsocketSessionId),
     {noreply, State};
 handle_cast({keepalive, Timestamp}, State) ->
     {noreply, State#state{keepalive = Timestamp}};
