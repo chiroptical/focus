@@ -20,7 +20,9 @@ TODO
 - [ ] Break up `twitch:subscribe/2` into more specific functions
 - [x] Subscribe to `channel.subscribe` in `twitch:message_action/2` https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelsubscribe
 - [x] Handle `channel.subscribe` in `twitch:message_action/2`
-- [ ] Add state to control debug logging, separate logging levels into Twitch and everything else becomes debug logged
+- [ ] Add `twitch:msg(String)` for sending messages to chat
+- [ ] Add `twitch:ban(UserName)` for banning users from chat
+- [ ] Add gen_server to handle debug logging, logs are sent but only printed when it is enabled.
 - [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
   - [ ] Need an index.html with a single button to start the flow
   - [ ] Redirect user to handle OAuth
