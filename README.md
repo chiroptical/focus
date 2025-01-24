@@ -8,19 +8,8 @@ Developed live on [![Chiroptical](https://img.shields.io/badge/twitch.tv-chiropt
 TODO
 ---
 
-- [x] Handle `session_keepalive` in `twitch:message_action/2` https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#keepalive-message
-- [x] Handle `channel.chat.message` in `twitch:message_action/2` https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelchatmessage
-- [x] In `handle_cast({notification, ...`, create a function to handle the event based on the type
-- [x] Subscribe to `channel.follow` in `twitch:subscribe/1` https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelfollow
-- [x] Handle `channel.follow` in `twitch:message_action/2`
-- [x] Need to add some logger formatting to twitch chat (https://github.com/julianduque/erlang-color?tab=readme-ov-file#true-24-bit-colors) 
-  ```erlang
-  io_lib:format("Hello, this is the ~s color~n", [ color:red("red") ])  
-  ```
 - [ ] Break up `twitch:subscribe/2` into more specific functions
-- [x] Subscribe to `channel.subscribe` in `twitch:message_action/2` https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelsubscribe
-- [x] Handle `channel.subscribe` in `twitch:message_action/2`
-- [ ] Add `twitch:msg(String)` for sending messages to chat
+- [x] Add `twitch:msg(Binary)` for sending messages to chat
 - [ ] Add `twitch:ban(UserName)` for banning users from chat
 - [ ] Add gen_server to handle debug logging, logs are sent but only printed when it is enabled.
 - [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
