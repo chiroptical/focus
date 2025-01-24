@@ -198,7 +198,7 @@ msg(Message) when is_binary(Message) ->
     maybe
         {ok, TwitchEnv} = get_twitch_env(),
         {ok, UserId} = maps:find(user_id, TwitchEnv),
-        {ok, Body} =
+        {ok, _Body} =
             post(
                 TwitchEnv,
                 "https://api.twitch.tv/helix/chat/messages",
@@ -209,7 +209,7 @@ msg(Message) when is_binary(Message) ->
                 },
                 200
             ),
-        {ok, Body}
+        ok
     else
         Err = {error, _} ->
             Err;
