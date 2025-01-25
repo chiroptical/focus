@@ -9,20 +9,31 @@ TODO
 ---
 
 - [ ] Add `twitch:ban(UserName)` for banning users from chat
-- [ ] Break up `twitch:subscribe/2` into more specific functions
-- [x] Add `twitch:msg(Binary)` for sending messages to chat
-- [x] Add gen_server to handle debug logging, logs are sent but only printed when it is enabled.
-- [ ] Refactor error handling to use `devlog:log/1`
+- [ ] `devlog:log/1` should check if the process is local, if not use `erpc:multicast/4`
+- [ ] Refactor logging and error handling to use `devlog:log/1`
+- [ ] The `devlog` server doesn't need to have `enable`/`disable`
 - [ ] `server_focus` should be supervised
-- [ ] Mechanism to automatically refresh Twitch credentials
-- [ ] Add convenient mechanism to stop the server
+- [ ] `devlog` should be supervised
+- [ ] rebar3 command to automatically start shell with name `focus`
+- [ ] rebar3 command to automatically start shell with name `devlog` and connect to the `focus` node
+- [ ] Break up `twitch:subscribe/2` into more specific functions
 - [ ] How do we deal with emojis over the wire? 👋
+- [ ] See https://github.com/chiroptical/focus/issues/1
+- [ ] See https://github.com/chiroptical/focus/issues/2
+- [ ] Mechanism to automatically refresh Twitch credentials
+- [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#reconnect-message
+- [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#revocation-message
+- [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#close-message
+- [ ] Add convenient mechanism to stop `server_focus`
 - [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
   - [ ] Need an index.html with a single button to start the flow
   - [ ] Redirect user to handle OAuth
   - [ ] Handle request from Twitch
   - [ ] Store credentials
   - [ ] Redirect user to complete.html
+- [ ] Record video to set this up in Erlang
+- [ ] Record video to set this up in Elixir
+- [ ] Record video to set this up in Gleam
 
 Environment variables and set up
 ----
