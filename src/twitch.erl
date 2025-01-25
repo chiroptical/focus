@@ -239,7 +239,12 @@ handle_notification(~"channel.chat.message", Event) ->
     maybe
         {ok, Chatter} = maps:find(~"chatter_user_name", Event),
         {ok, Color} = maps:find(~"color", Event),
-        {_, Hex} = string:take(binary_to_list(Color), "#"),
+        ColorWithDefault =
+            case Color of
+                <<>> -> "6495ED";
+                Color -> Color
+            end,
+        {_, Hex} = string:take(binary_to_list(ColorWithDefault), "#"),
         {ok, Message} = maps:find(~"message", Event),
         {ok, MessageText} = maps:find(~"text", Message),
         Chat = io_lib:format("[~s] ~s~n", [color:true(Hex, Chatter), MessageText]),

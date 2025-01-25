@@ -8,18 +8,21 @@ Developed live on [![Chiroptical](https://img.shields.io/badge/twitch.tv-chiropt
 TODO
 ---
 
+- [ ] Add `twitch:ban(UserName)` for banning users from chat
 - [ ] Break up `twitch:subscribe/2` into more specific functions
 - [x] Add `twitch:msg(Binary)` for sending messages to chat
-- [ ] Add `twitch:ban(UserName)` for banning users from chat
-- [ ] Add gen_server to handle debug logging, logs are sent but only printed when it is enabled.
+- [x] Add gen_server to handle debug logging, logs are sent but only printed when it is enabled.
+- [ ] Refactor error handling to use `devlog:log/1`
+- [ ] `server_focus` should be supervised
+- [ ] Mechanism to automatically refresh Twitch credentials
+- [ ] Add convenient mechanism to stop the server
+- [ ] How do we deal with emojis over the wire? 👋
 - [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
   - [ ] Need an index.html with a single button to start the flow
   - [ ] Redirect user to handle OAuth
   - [ ] Handle request from Twitch
   - [ ] Store credentials
   - [ ] Redirect user to complete.html
-- [ ] Mechanism to automatically refresh Twitch credentials
-- [ ] Add convenient mechanism to stop the server
 
 Environment variables and set up
 ----
