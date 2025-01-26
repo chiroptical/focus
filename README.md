@@ -11,15 +11,16 @@ TODO
 - [x] Add `twitch:ban(UserName)` for banning users from chat
   - [ ] Need to test in production
 - [x] The `devlog` server doesn't need to have `enable`/`disable`
-- [ ] `devlog:log/1` should check if the process is local, if not use `erpc:multicast/4`
-- [ ] Refactor logging and error handling to use `devlog:log/1`
+- [x] `devlog:log/1` should check if the process is local, if not use `erpc:multicast/4`
+- [x] Refactor logging and error handling in `server_focus` to use `devlog:log/1`
 - [ ] `server_focus` should be supervised
 - [ ] `devlog` should be supervised
 - [ ] rebar3 command to automatically start shell with name `focus`
 - [ ] rebar3 command to automatically start shell with name `devlog` and connect to the `focus` node
+- [ ] refactor `twitch` module, it shouldn't really require `maybe` expressions.
+      the maybe expressions are the responsibility of the caller.
 - [ ] Break up `twitch:subscribe/2` into more specific functions
 - [ ] How do we deal with emojis over the wire? 👋
-- [ ] See https://github.com/chiroptical/focus/issues/1
 - [ ] See https://github.com/chiroptical/focus/issues/2
 - [ ] Mechanism to automatically refresh Twitch credentials
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#reconnect-message

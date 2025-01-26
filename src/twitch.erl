@@ -113,31 +113,27 @@ eventsub_subscription(TwitchEnv, Payload) ->
 
 %% Example: https://dev.twitch.tv/docs/api/reference/#create-eventsub-subscription
 subscribe(follows, WebsocketSessionId) ->
-    maybe
-        {ok, TwitchEnv} = get_twitch_env(),
-        {ok, UserId} = maps:find(user_id, TwitchEnv),
-        {ok, Body} = eventsub_subscription(
-            TwitchEnv,
-            #{
-                type => ~"channel.follow",
-                version => ~"2",
-                condition => #{
-                    broadcaster_user_id => UserId,
-                    moderator_user_id => UserId
-                },
-                transport => #{
-                    method => websocket,
-                    session_id => WebsocketSessionId
-                }
+    {ok, TwitchEnv} = get_twitch_env(),
+    {ok, UserId} = maps:find(user_id, TwitchEnv),
+    eventsub_subscription(
+        TwitchEnv,
+        #{
+            type => ~"channel.follow",
+            version => ~"2",
+            condition => #{
+                broadcaster_user_id => UserId,
+                moderator_user_id => UserId
+            },
+            transport => #{
+                method => websocket,
+                session_id => WebsocketSessionId
             }
-        ),
-        {ok, Body}
-    end;
+        }
+    );
 subscribe(subscribers, WebsocketSessionId) ->
-    maybe
         {ok, TwitchEnv} = get_twitch_env(),
         {ok, UserId} = maps:find(user_id, TwitchEnv),
-        {ok, Body} = eventsub_subscription(
+        eventsub_subscription(
             TwitchEnv,
             #{
                 type => ~"channel.subscribe",
@@ -150,14 +146,11 @@ subscribe(subscribers, WebsocketSessionId) ->
                     session_id => WebsocketSessionId
                 }
             }
-        ),
-        {ok, Body}
-    end;
+        );
 subscribe(chat, WebsocketSessionId) ->
-    maybe
         {ok, TwitchEnv} = get_twitch_env(),
         {ok, UserId} = maps:find(user_id, TwitchEnv),
-        {ok, Body} = eventsub_subscription(
+        eventsub_subscription(
             TwitchEnv,
             #{
                 type => ~"channel.chat.message",
@@ -171,9 +164,7 @@ subscribe(chat, WebsocketSessionId) ->
                     session_id => WebsocketSessionId
                 }
             }
-        ),
-        {ok, Body}
-    end.
+        ).
 
 auth() ->
     maybe

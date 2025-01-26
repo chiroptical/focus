@@ -3,9 +3,6 @@
 
 -export([
     start_link/0,
-    enable_debug_messages/0,
-    disable_debug_messages/0,
-    follows/0,
     init/1,
     handle_info/2,
     handle_call/3,
@@ -14,20 +11,11 @@
 ]).
 
 -record(state, {
-    gun_connection_pid, enable_debug_messages = false, keepalive = none, websocket_session_id = none
+    gun_connection_pid, keepalive = none, websocket_session_id = none
 }).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-
-enable_debug_messages() ->
-    gen_server:cast(self(), enable_debug_messages).
-
-disable_debug_messages() ->
-    gen_server:cast(self(), disable_debug_messages).
-
-follows() ->
-    gen_server:cast(self(), {subscribe, follows}).
 
 init([]) ->
     {ok, ConnPid} = gun:open(
@@ -41,72 +29,92 @@ init([]) ->
     ),
     {ok, #state{gun_connection_pid = ConnPid}, {continue, upgrade_connection}}.
 
-debug_log(true, Msg) ->
-    logger:notice(Msg);
-debug_log(false, _Msg) ->
-    ok.
-
 handle_info(
-    {gun_upgrade, ConnPid, _StreamRef, [<<"websocket">>], _Headers},
-    #state{gun_connection_pid = ConnPid, enable_debug_messages = DebugMessages} = State
+    {gun_upgrade, ConnPid, _StreamRef, [~"websocket"], _Headers},
+    #state{gun_connection_pid = ConnPid} = State
 ) ->
-    debug_log(DebugMessages, #{connection => upgraded}),
+    devlog:log(#{websocket => upgraded}),
     {noreply, State};
 handle_info(
-    {gun_ws, ConnPid, _StreamRef, {text, Bin}},
-    #state{gun_connection_pid = ConnPid, enable_debug_messages = DebugMessages} = State
+    {gun_ws, ConnPid, _StreamRef, {text, JsonBody}},
+    #state{gun_connection_pid = ConnPid} = State
 ) ->
-    case utils_json:decode(Bin) of
+    case utils_json:decode(JsonBody) of
         {ok, TwitchMessage} ->
             maybe
+                devlog:log(#{decoded_twitch_message => TwitchMessage}),
                 {ok, MessageType} = twitch:parse_message_type(TwitchMessage),
-                debug_log(DebugMessages, #{got_twitch_message => MessageType}),
+                devlog:log(#{parsed_twitch_message => MessageType}),
                 {ok, MessageAction} = twitch:message_action(MessageType, TwitchMessage),
+                devlog:log(#{twitch_message_action => MessageAction}),
                 gen_server:cast(self(), MessageAction)
             else
-                {error, _} ->
-                    logger:notice(#{unable_to_action => TwitchMessage})
+                {error, GotError} ->
+                    devlog:log(#{twitch_message_error => GotError})
             end;
         {error, _} ->
-            logger:notice(#{unable_to_parse => Bin})
+            devlog:log(#{unable_to_parse_twitch_message => JsonBody})
     end,
     {noreply, State};
-handle_info(Msg, #state{enable_debug_messages = DebugMessages} = State) ->
-    debug_log(DebugMessages, #{got_unknown_message => Msg}),
+handle_info(Msg, #state{} = State) ->
+    devlog:log(#{handle_info_unknown_message => Msg}),
     {noreply, State}.
 
-handle_call(_Msg, _From, State) ->
+handle_call(Msg, _From, State) ->
+    devlog:log(#{handle_call_unknown_message => Msg}),
     {noreply, State}.
 
-% Control whether or not to print debug messages
-handle_cast(enable_debug_messages, State) ->
-    {noreply, State#state{enable_debug_messages = true}};
-handle_cast(disable_debug_messages, State) ->
-    {noreply, State#state{enable_debug_messages = false}};
 % Messages from Twitch
-handle_cast({subscribe, follows}, State) ->
-    {ok, _Body} = twitch:subscribe(follows, State#state.websocket_session_id),
+handle_cast({subscribe, WebsocketSessionId} = Action, State) ->
+    maybe
+        devlog:log(#{attempting => Action}),
+        {ok, Body} = twitch:subscribe(chat, WebsocketSessionId),
+        devlog:log(#{completed => Action, got => Body}),
+        gen_server:cast(self(), {subscribe, follows, WebsocketSessionId}),
+        gen_server:cast(self(), {subscribe, subscribers, WebsocketSessionId}),
+        {noreply, State#state{websocket_session_id = WebsocketSessionId}}
+    else
+        Err ->
+            devlog:log(#{errored => Action, error => Err}),
+            {noreply, State}
+    end;
+handle_cast({subscribe, follows, WebsocketSessionId} = Action, State) ->
+    maybe
+        devlog:log(#{attempting => Action}),
+        {ok, Body} = twitch:subscribe(follows, WebsocketSessionId),
+        devlog:log(#{completed => Action, got => Body})
+    else
+        Err ->
+            devlog:log(#{errored => Action, error => Err})
+    end,
     {noreply, State};
-handle_cast({subscribe, WebsocketSessionId}, State) ->
-    {ok, _Body} = twitch:subscribe(chat, WebsocketSessionId),
-    gen_server:cast(self(), {subscribe, follows, WebsocketSessionId}),
-    gen_server:cast(self(), {subscribe, subscribers, WebsocketSessionId}),
-    {noreply, State#state{websocket_session_id = WebsocketSessionId}};
-handle_cast({subscribe, follows, WebsocketSessionId}, State) ->
-    {ok, _Body} = twitch:subscribe(follows, WebsocketSessionId),
-    {noreply, State};
-handle_cast({subscribe, subscribers, WebsocketSessionId}, State) ->
-    {ok, _Body} = twitch:subscribe(subscribers, WebsocketSessionId),
+handle_cast({subscribe, subscribers, WebsocketSessionId} = Action, State) ->
+    maybe
+        devlog:log(#{attempting => Action}),
+        {ok, Body} = twitch:subscribe(subscribers, WebsocketSessionId),
+        devlog:log(#{completed => Action, got => Body})
+    else
+        Err ->
+            devlog:log(#{errored => Action, error => Err})
+    end,
     {noreply, State};
 handle_cast({keepalive, Timestamp}, State) ->
+    devlog:log(#{keepalive => Timestamp}),
     {noreply, State#state{keepalive = Timestamp}};
-handle_cast({notification, Type, Event}, State) ->
+handle_cast({notification, Type, Event} = Notification, State) ->
+    devlog:log(#{attempting => Notification}),
+    % TODO: handle_notification should return `ok` | `error`
+    % so we can use `maybe` here and not let our gen_server explode
     twitch:handle_notification(Type, Event),
+    devlog:log(#{completed => Notification}),
     {noreply, State};
-handle_cast(_Msg, State) ->
+handle_cast(Msg, State) ->
+    devlog:log(#{handle_cast_unknown_message => Msg}),
     {noreply, State}.
 
 handle_continue(upgrade_connection, #state{gun_connection_pid = ConnPid} = State) ->
+    devlog:log(awaiting_gun_up),
     {ok, _Protocol} = gun:await_up(ConnPid),
+    devlog:log(start_ws_upgrade),
     gun:ws_upgrade(ConnPid, "/ws"),
     {noreply, State}.
