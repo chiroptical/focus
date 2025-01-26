@@ -16,8 +16,9 @@ TODO
 - [x] Refactor logging and error handling in `server_focus` to use `devlog:log/1`
 - [ ] `server_focus` should be supervised
 - [ ] `devlog` should be supervised
-- [ ] rebar3 command to automatically start shell with name `focus`
-- [ ] rebar3 command to automatically start shell with name `devlog` and connect to the `focus` node
+- [x] rebar3 command to automatically start shell with name `focus`
+- [x] rebar3 command to automatically start shell with name `devlog`
+- [ ] can we automatically get the two nodes `focus` and `devlog` to be connected?
 - [ ] refactor `twitch` module, it shouldn't really require `maybe` expressions.
       the maybe expressions are the responsibility of the caller.
 - [ ] Break up `twitch:subscribe/2` into more specific functions
