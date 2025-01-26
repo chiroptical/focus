@@ -10,9 +10,9 @@ TODO
 
 - [x] Add `twitch:ban(UserName)` for banning users from chat
   - [ ] Need to test in production
+- [x] The `devlog` server doesn't need to have `enable`/`disable`
 - [ ] `devlog:log/1` should check if the process is local, if not use `erpc:multicast/4`
 - [ ] Refactor logging and error handling to use `devlog:log/1`
-- [ ] The `devlog` server doesn't need to have `enable`/`disable`
 - [ ] `server_focus` should be supervised
 - [ ] `devlog` should be supervised
 - [ ] rebar3 command to automatically start shell with name `focus`
