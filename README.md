@@ -34,6 +34,8 @@ TODO
   - [ ] Handle request from Twitch
   - [ ] Store credentials
   - [ ] Redirect user to complete.html
+- [ ] Store twitch user name to user id mnesia table
+- [ ] Store twitch messages in mnesia table
 - [ ] Record video to set this up in Erlang
 - [ ] Record video to set this up in Elixir
 - [ ] Record video to set this up in Gleam
