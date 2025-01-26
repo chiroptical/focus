@@ -131,40 +131,40 @@ subscribe(follows, WebsocketSessionId) ->
         }
     );
 subscribe(subscribers, WebsocketSessionId) ->
-        {ok, TwitchEnv} = get_twitch_env(),
-        {ok, UserId} = maps:find(user_id, TwitchEnv),
-        eventsub_subscription(
-            TwitchEnv,
-            #{
-                type => ~"channel.subscribe",
-                version => ~"1",
-                condition => #{
-                    broadcaster_user_id => UserId
-                },
-                transport => #{
-                    method => websocket,
-                    session_id => WebsocketSessionId
-                }
+    {ok, TwitchEnv} = get_twitch_env(),
+    {ok, UserId} = maps:find(user_id, TwitchEnv),
+    eventsub_subscription(
+        TwitchEnv,
+        #{
+            type => ~"channel.subscribe",
+            version => ~"1",
+            condition => #{
+                broadcaster_user_id => UserId
+            },
+            transport => #{
+                method => websocket,
+                session_id => WebsocketSessionId
             }
-        );
+        }
+    );
 subscribe(chat, WebsocketSessionId) ->
-        {ok, TwitchEnv} = get_twitch_env(),
-        {ok, UserId} = maps:find(user_id, TwitchEnv),
-        eventsub_subscription(
-            TwitchEnv,
-            #{
-                type => ~"channel.chat.message",
-                version => ~"1",
-                condition => #{
-                    broadcaster_user_id => UserId,
-                    user_id => UserId
-                },
-                transport => #{
-                    method => websocket,
-                    session_id => WebsocketSessionId
-                }
+    {ok, TwitchEnv} = get_twitch_env(),
+    {ok, UserId} = maps:find(user_id, TwitchEnv),
+    eventsub_subscription(
+        TwitchEnv,
+        #{
+            type => ~"channel.chat.message",
+            version => ~"1",
+            condition => #{
+                broadcaster_user_id => UserId,
+                user_id => UserId
+            },
+            transport => #{
+                method => websocket,
+                session_id => WebsocketSessionId
             }
-        ).
+        }
+    ).
 
 auth() ->
     maybe
@@ -229,9 +229,11 @@ ban(UserName) when is_binary(UserName) ->
                             ]
                         ),
                         #{
-                            data => #{
-                                user_id => UserId
-                            }
+                            data => [
+                                #{
+                                    user_id => UserId
+                                }
+                            ]
                         },
                         200
                     ),

@@ -9,7 +9,7 @@ TODO
 ---
 
 - [x] Add `twitch:ban(UserName)` for banning users from chat
-  - [ ] Need to adjust post body because `data` is `Object[]`   
+  - [x] Need to adjust post body because `data` is `Object[]`   
   - [ ] Need to test in production
 - [x] The `devlog` server doesn't need to have `enable`/`disable`
 - [x] `devlog:log/1` should check if the process is local, if not use `erpc:multicast/4`
