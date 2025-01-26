@@ -6,7 +6,8 @@
     auth/0,
     subscribe/2,
     handle_notification/2,
-    msg/1
+    msg/1,
+    ban/1
 ]).
 
 get_env(Key) ->
@@ -187,6 +188,66 @@ auth() ->
                 [{<<"Authorization">>, <<"OAuth ", UserAccessToken/binary>>}]
             ),
         {ok, Body}
+    else
+        Err = {error, _} ->
+            Err;
+        {error, Status, _ErrHeaders, ErrBody} ->
+            {error, Status, ErrBody}
+    end.
+
+twitch_user_id(TwitchEnv, UserName) ->
+    maybe
+        {ok, ClientId} = maps:find(client_id, TwitchEnv),
+        {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
+        {ok, 200, _Headers, Body} =
+            restc:request(
+                get,
+                json,
+                restc:construct_url("https://api.twitch.tv/helix/users", [{"login", UserName}]),
+                [200],
+                [
+                    {<<"Authorization">>, <<"Bearer ", UserAccessToken/binary>>},
+                    {~"Client-Id", ClientId}
+                ]
+            ),
+        {ok, Body}
+    else
+        Err = {error, _} ->
+            Err;
+        {error, Status, _ErrHeaders, ErrBody} ->
+            {error, Status, ErrBody}
+    end.
+
+ban(UserName) when is_binary(UserName) ->
+    maybe
+        {ok, TwitchEnv} = get_twitch_env(),
+        {ok, StreamerId} = maps:find(user_id, TwitchEnv),
+        {ok, UserResponse} = twitch_user_id(TwitchEnv, UserName),
+        {ok, Data} = maps:find(~"data", UserResponse),
+        case Data of
+            [UserData] ->
+                UserId = maps:find(~"id", UserData),
+                {ok, _Body} =
+                    post(
+                        TwitchEnv,
+                        restc:construct_url(
+                            "https://api.twitch.tv/helix/moderation/bans",
+                            [
+                                {"broadcaster_id", binary_to_list(StreamerId)},
+                                {"moderator_id", binary_to_list(StreamerId)}
+                            ]
+                        ),
+                        #{
+                            data => #{
+                                user_id => UserId
+                            }
+                        },
+                        200
+                    ),
+                ok;
+            _ ->
+                unable_to_find_user_data
+        end
     else
         Err = {error, _} ->
             Err;

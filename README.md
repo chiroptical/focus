@@ -8,7 +8,8 @@ Developed live on [![Chiroptical](https://img.shields.io/badge/twitch.tv-chiropt
 TODO
 ---
 
-- [ ] Add `twitch:ban(UserName)` for banning users from chat
+- [x] Add `twitch:ban(UserName)` for banning users from chat
+  - [ ] Need to test in production
 - [ ] `devlog:log/1` should check if the process is local, if not use `erpc:multicast/4`
 - [ ] Refactor logging and error handling to use `devlog:log/1`
 - [ ] The `devlog` server doesn't need to have `enable`/`disable`
