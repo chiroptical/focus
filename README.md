@@ -11,20 +11,12 @@ TODO
 - [x] Add `twitch:ban(UserName)` for banning users from chat
   - [x] Need to adjust post body because `data` is `Object[]`   
   - [ ] Need to test in production
-- [x] The `devlog` server doesn't need to have `enable`/`disable`
-- [x] `devlog:log/1` should check if the process is local, if not use `erpc:multicast/4`
-- [x] Refactor logging and error handling in `server_focus` to use `devlog:log/1`
-- [ ] `server_focus` should be supervised
-- [ ] `devlog` should be supervised
-- [x] rebar3 command to automatically start shell with name `focus`
-- [x] rebar3 command to automatically start shell with name `devlog`
-- [ ] can we automatically get the two nodes `focus` and `devlog` to be connected?
+- [ ] How do we deal with emojis over the wire? 👋
+- [ ] Mechanism to automatically refresh Twitch credentials
 - [ ] refactor `twitch` module, it shouldn't really require `maybe` expressions.
       the maybe expressions are the responsibility of the caller.
 - [ ] Break up `twitch:subscribe/2` into more specific functions
-- [ ] How do we deal with emojis over the wire? 👋
 - [ ] See https://github.com/chiroptical/focus/issues/2
-- [ ] Mechanism to automatically refresh Twitch credentials
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#reconnect-message
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#revocation-message
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#close-message
@@ -37,6 +29,7 @@ TODO
   - [ ] Redirect user to complete.html
 - [ ] Store twitch user name to user id mnesia table
 - [ ] Store twitch messages in mnesia table
+- [ ] can we automatically get the two nodes `focus` and `devlog` to be connected?
 - [ ] Record video to set this up in Erlang
 - [ ] Record video to set this up in Elixir
 - [ ] Record video to set this up in Gleam
@@ -71,3 +64,43 @@ for this step to work. This will allow you to add your user access token and
 refresh token. Once all of that is exported, you can run `rebar3 shell` and
 `twitch:auth()` should get you your user id. If that doesn't work, you have
 configured something incorrectly.
+
+Running focus
+---
+
+Open two terminal windows, the first one I'll refer to as 'focus' and the second
+'devlog'. The focus terminal will display events from Twitch, e.g. messages,
+followers, subscribers. The devlog terminal will display **all** of the event
+data being ingested and processed to make that happen. The devlog terminal is
+**not** meant to be seen by your viewers!
+
+In the focus terminal, run the following `rebar3 focus` this will start the
+erlang development shell with a name e.g. on my machine,
+
+```
+(focus@wilder)1>
+```
+
+The value in parentheses is known as the "node name" and this is how you
+connect erlang nodes together. We'll do that shortly. In the focus erlang
+shell, run `focus:server().`. The server is now running and if you
+configured it correctly you should recieve messages, follows, subs.
+
+In the devlog terminal, run the following `rebar3 devlog` this will start
+the erlang development shell with a name, e.g. on my machine,
+
+```
+(devlog@wilder)1>
+```
+
+In the devlog log, run the following commands,
+
+```
+(devlog@wilder)1> net_adm:ping('focus@wilder').
+pong
+(devlog@wilder)2> focus:devlog().
+{ok, <0.400.0>}
+```
+
+If you see, `pong` and an `ok` tuple you should start seeing keepalive messages
+in the devlog erlang shell.
