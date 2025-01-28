@@ -11,7 +11,7 @@ TODO
 - [x] Add `twitch:ban(UserName)` for banning users from chat
   - [x] Need to adjust post body because `data` is `Object[]`   
   - [ ] Need to test in production
-- [ ] How do we deal with emojis over the wire? 👋
+- [x] How do we deal with emojis over the wire? 👋
 - [ ] Mechanism to automatically refresh Twitch credentials
 - [ ] refactor `twitch` module, it shouldn't really require `maybe` expressions.
       the maybe expressions are the responsibility of the caller.

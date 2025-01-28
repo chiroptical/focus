@@ -280,12 +280,12 @@ from_tier(~"3000") ->
 
 display_subscription(true, Chatter, Tier) ->
     io_lib:format(
-        "~s was gifted a ~s sub, I appreciate you!~n",
+        "~ts was gifted a ~ts sub, I appreciate you!~n",
         [color:true("0096FF", Chatter), from_tier(Tier)]
     );
 display_subscription(false, Chatter, Tier) ->
     io_lib:format(
-        "~s subscribed at ~s, I appreciate you!~n",
+        "~ts subscribed at ~ts, I appreciate you!~n",
         [color:true("0096FF", Chatter), from_tier(Tier)]
     ).
 
@@ -301,7 +301,7 @@ handle_notification(~"channel.chat.message", Event) ->
         {_, Hex} = string:take(binary_to_list(ColorWithDefault), "#"),
         {ok, Message} = maps:find(~"message", Event),
         {ok, MessageText} = maps:find(~"text", Message),
-        Chat = io_lib:format("[~s] ~s~n", [color:true(Hex, Chatter), MessageText]),
+        Chat = io_lib:format("[~ts] ~ts~n", [color:true(Hex, Chatter), MessageText]),
         logger:notice(Chat)
     else
         {error, _} ->
@@ -321,7 +321,7 @@ handle_notification(~"channel.subscribe", Event) ->
 handle_notification(~"channel.follow", Event) ->
     maybe
         {ok, Chatter} = maps:find(~"user_name", Event),
-        Chat = io_lib:format("Thanks for following ~s!~n", [color:true("C3B1E1", Chatter)]),
+        Chat = io_lib:format("Thanks for following ~ts!~n", [color:true("C3B1E1", Chatter)]),
         logger:notice(Chat)
     else
         {error, _} ->
