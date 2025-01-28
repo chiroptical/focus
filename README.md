@@ -12,7 +12,12 @@ TODO
   - [x] Need to adjust post body because `data` is `Object[]`   
   - [ ] Need to test in production
 - [x] How do we deal with emojis over the wire? 👋
-- [ ] Mechanism to automatically refresh Twitch credentials
+- [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
+  - [ ] Need an index.html with a single button to start the flow
+  - [ ] Redirect user to handle OAuth
+  - [ ] Handle request from Twitch
+  - [ ] Store credentials
+  - [ ] Redirect user to complete.html
 - [ ] refactor `twitch` module, it shouldn't really require `maybe` expressions.
       the maybe expressions are the responsibility of the caller.
 - [ ] Break up `twitch:subscribe/2` into more specific functions
@@ -21,12 +26,6 @@ TODO
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#revocation-message
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#close-message
 - [ ] Add convenient mechanism to stop `server_focus`
-- [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
-  - [ ] Need an index.html with a single button to start the flow
-  - [ ] Redirect user to handle OAuth
-  - [ ] Handle request from Twitch
-  - [ ] Store credentials
-  - [ ] Redirect user to complete.html
 - [ ] Store twitch user name to user id mnesia table
 - [ ] Store twitch messages in mnesia table
 - [ ] can we automatically get the two nodes `focus` and `devlog` to be connected?
