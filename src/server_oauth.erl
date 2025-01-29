@@ -11,7 +11,8 @@ start(_Type, _Args) ->
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/", handler_oauth, []},
-            {"/oauth/begin", handler_oauth, []}
+            {"/oauth/begin", handler_oauth, []},
+            {"/oauth/end", handler_oauth, []}
         ]}
     ]),
     {ok, _} = cowboy:start_clear(
