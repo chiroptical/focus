@@ -1,6 +1,7 @@
 -module(twitch).
 
 -export([
+    env/0,
     parse_message_type/1,
     message_action/2,
     auth/0,
@@ -18,7 +19,7 @@ get_env(Key) ->
             {ok, list_to_binary(Value)}
     end.
 
-get_twitch_env() ->
+env() ->
     maybe
         {ok, Secret} = get_env("TWITCH_SECRET"),
         {ok, UserAccessToken} = get_env("TWITCH_USER_ACCESS_TOKEN"),
@@ -113,7 +114,7 @@ eventsub_subscription(TwitchEnv, Payload) ->
 
 %% Example: https://dev.twitch.tv/docs/api/reference/#create-eventsub-subscription
 subscribe(follows, WebsocketSessionId) ->
-    {ok, TwitchEnv} = get_twitch_env(),
+    {ok, TwitchEnv} = env(),
     {ok, UserId} = maps:find(user_id, TwitchEnv),
     eventsub_subscription(
         TwitchEnv,
@@ -131,7 +132,7 @@ subscribe(follows, WebsocketSessionId) ->
         }
     );
 subscribe(subscribers, WebsocketSessionId) ->
-    {ok, TwitchEnv} = get_twitch_env(),
+    {ok, TwitchEnv} = env(),
     {ok, UserId} = maps:find(user_id, TwitchEnv),
     eventsub_subscription(
         TwitchEnv,
@@ -148,7 +149,7 @@ subscribe(subscribers, WebsocketSessionId) ->
         }
     );
 subscribe(chat, WebsocketSessionId) ->
-    {ok, TwitchEnv} = get_twitch_env(),
+    {ok, TwitchEnv} = env(),
     {ok, UserId} = maps:find(user_id, TwitchEnv),
     eventsub_subscription(
         TwitchEnv,
@@ -168,7 +169,7 @@ subscribe(chat, WebsocketSessionId) ->
 
 auth() ->
     maybe
-        {ok, TwitchEnv} = get_twitch_env(),
+        {ok, TwitchEnv} = env(),
         {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
         {ok, 200, _Headers, Body} =
             restc:request(
@@ -209,38 +210,39 @@ twitch_user_id(TwitchEnv, UserName) ->
             {error, Status, ErrBody}
     end.
 
+safe_head([X]) ->
+    {ok, X};
+safe_head(_) ->
+    {error, not_a_singleton_list}.
+
 ban(UserName) when is_binary(UserName) ->
     maybe
-        {ok, TwitchEnv} = get_twitch_env(),
+        {ok, TwitchEnv} = env(),
         {ok, StreamerId} = maps:find(user_id, TwitchEnv),
         {ok, UserResponse} = twitch_user_id(TwitchEnv, UserName),
-        {ok, Data} = maps:find(~"data", UserResponse),
-        case Data of
-            [UserData] ->
-                UserId = maps:find(~"id", UserData),
-                {ok, _Body} =
-                    post(
-                        TwitchEnv,
-                        restc:construct_url(
-                            "https://api.twitch.tv/helix/moderation/bans",
-                            [
-                                {"broadcaster_id", binary_to_list(StreamerId)},
-                                {"moderator_id", binary_to_list(StreamerId)}
-                            ]
-                        ),
+        {ok, {_, UserDataList}} = safe_head(UserResponse),
+        {ok, UserData} = safe_head(UserDataList),
+        UserDataMap = proplists:to_map(UserData),
+        {ok, UserId} = maps:find(~"id", UserDataMap),
+        {ok, _Body} =
+            post(
+                TwitchEnv,
+                restc:construct_url(
+                    "https://api.twitch.tv/helix/moderation/bans",
+                    [
+                        {"broadcaster_id", binary_to_list(StreamerId)},
+                        {"moderator_id", binary_to_list(StreamerId)}
+                    ]
+                ),
+                #{
+                    data =>
                         #{
-                            data => [
-                                #{
-                                    user_id => UserId
-                                }
-                            ]
-                        },
-                        200
-                    ),
-                ok;
-            _ ->
-                unable_to_find_user_data
-        end
+                            user_id => UserId
+                        }
+                },
+                200
+            ),
+        ok
     else
         Err = {error, _} ->
             Err;
@@ -250,7 +252,7 @@ ban(UserName) when is_binary(UserName) ->
 
 msg(Message) when is_binary(Message) ->
     maybe
-        {ok, TwitchEnv} = get_twitch_env(),
+        {ok, TwitchEnv} = env(),
         {ok, UserId} = maps:find(user_id, TwitchEnv),
         {ok, _Body} =
             post(
@@ -295,7 +297,7 @@ handle_notification(~"channel.chat.message", Event) ->
         {ok, Color} = maps:find(~"color", Event),
         ColorWithDefault =
             case Color of
-                <<>> -> "6495ED";
+                <<>> -> ~"6495ED";
                 Color -> Color
             end,
         {_, Hex} = string:take(binary_to_list(ColorWithDefault), "#"),
