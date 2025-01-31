@@ -4,22 +4,34 @@
     init/2
 ]).
 
-% TODO: Use https://github.com/bunopnu/e2h to generate views
-view(~"") ->
-    <<"<!doctype html>", "<html>", "<head>", "<title>Authorize with Twitch</title>", "</head>",
-        "<body>", "<form action=\"/oauth/begin\" method=\"get\">",
-        "<input type=\"submit\" value=\"Begin\">", "</form>", "</body>", "</html>">>;
+layout(Title, Inner) ->
+    [
+        {~"head", [], [
+            {~"title", [], [Title]}
+        ]},
+        {~"body", [], Inner}
+    ].
+
 view(Msg) ->
-    <<"<!doctype html>", "<html>", "<head>", "<title>Authorize with Twitch</title>", "</head>",
-        "<body>", "<p>", Msg/binary, "</p>", "</body>", "</html>">>.
+    layout(~"Authorize with Twitch", [
+        case Msg of
+            ~"" ->
+                {~"form", [{~"action", ~"/oauth/begin"}, {~"method", ~"get"}], [
+                    {~"input", [{~"type", ~"submit"}, {~"value", ~"Begin"}]}
+                ]};
+            _ ->
+                {~"p", [], [Msg]}
+        end
+    ]).
 
 %% TODO: We don't need to redirect to /oauth/begin first
 init(#{path := ~"/", method := ~"GET"} = Req0, State) ->
     #{message := Message} = cowboy_req:match_qs([{message, [], ~""}], Req0),
+    View = view(Message),
     Req = cowboy_req:reply(
         200,
         #{~"content-type" => ~"text/html"},
-        view(Message),
+        e2h:render_html(View),
         Req0
     ),
     {ok, Req, State};
@@ -68,10 +80,11 @@ init(#{path := ~"/oauth/begin", method := ~"GET"} = Req0, State) ->
 %% TODO: Store the results in an mnesia table
 %% TODO: Use the authorization code to get a token, see 'DOCS'
 init(#{path := ~"/oauth/end", method := ~"GET"} = Req0, State) ->
+    View = view(~"All done!"),
     Req = cowboy_req:reply(
-        303,
-        #{~"location" => ~"/?message=All done"},
-        ~"",
+        200,
+        #{~"content-type" => ~"text/html"},
+        e2h:render_html(View),
         Req0
     ),
     {ok, Req, State}.
