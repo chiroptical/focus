@@ -8,13 +8,9 @@ Developed live on [![Chiroptical](https://img.shields.io/badge/twitch.tv-chiropt
 TODO
 ---
 
-- [x] Add `twitch:ban(UserName)` for banning users from chat
-  - [x] Need to adjust post body because `data` is `Object[]`   
-  - [ ] Need to test in production
-- [x] How do we deal with emojis over the wire? 👋
 - [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
-  - [ ] Need an index.html with a single button to start the flow
-  - [ ] Redirect user to handle OAuth
+  - [x] Need an index.html with a single button to start the flow
+  - [x] Redirect user to handle OAuth
   - [ ] Handle request from Twitch
   - [ ] Store credentials
   - [ ] Redirect user to complete.html
