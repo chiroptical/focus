@@ -11,9 +11,12 @@ TODO
 - [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
   - [x] Need an index.html with a single button to start the flow
   - [x] Redirect user to handle OAuth
-  - [ ] Handle request from Twitch
-  - [ ] Store credentials
+  - [ ] Store and retrieve credentials
+    - [ ] focus:server should create mnesia schema and twitch_credential table
+          if they don't exist. 
+    - [ ] focus:server should control starting mnesia on focus@hostname
   - [ ] Redirect user to complete.html
+  - [ ] Handle request from Twitch
 - [ ] refactor `twitch` module, it shouldn't really require `maybe` expressions.
       the maybe expressions are the responsibility of the caller.
 - [ ] Break up `twitch:subscribe/2` into more specific functions
