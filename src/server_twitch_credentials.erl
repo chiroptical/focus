@@ -3,10 +3,7 @@
 -behaviour(gen_server).
 
 -export([
-    start_link/2,
-    setup_mnesia/0,
-    create/4,
-    read/1
+    start_link/2
 ]).
 -export([
     init/1,
@@ -15,10 +12,10 @@
     handle_info/2
 ]).
 
-% TODO: Store credentials with mnesia
+% TODO: We need to store the credential expiry
 % TODO: The focus server supervisor should start this process
 % TODO: If our credentials are expired, fetch new ones.
-%       Should happen as continue in init/1 and in check_credentials loop.
+%       Should happen in continue in init/1 and in check_credentials loop.
 % TODO: Add a function refresh_credentials/0
 
 -record(twitch_credentials, {
@@ -27,55 +24,6 @@
     access_token = none,
     refresh_token = none
 }).
-
-setup_mnesia() ->
-    Nodes = [node()],
-    case mnesia:create_schema(Nodes) of
-        ok ->
-            logger:notice("Created mnesia schema"),
-            ok;
-        {error, {_, {already_exists, _}}} ->
-            logger:notice("Schema already exists");
-        {error, Err} ->
-            logger:notice(#{create_schema => failed_with, error => Err})
-    end,
-    application:start(mnesia),
-    case
-        mnesia:create_table(
-            twitch_credentials,
-            [
-                {attributes, record_info(fields, twitch_credentials)},
-                {disc_copies, Nodes}
-            ]
-        )
-    of
-        {atomic, ok} ->
-            ok;
-        {aborted, {already_exists, _}} ->
-            logger:notice(#{twitch_credentials_table => already_exists}),
-            ok
-    end,
-    application:stop(mnesia).
-
-create(ClientId, Secret, AccessToken, RefreshToken) ->
-    Txn = fun() ->
-        mnesia:write(
-            #twitch_credentials{
-                client_id = ClientId,
-                secret = Secret,
-                access_token = AccessToken,
-                refresh_token = RefreshToken
-            }
-        )
-    end,
-    mnesia:activity(transaction, Txn).
-
-% TODO: Returns [{twitch_credentials, ClientId, Secret, AccessToken, Refresh}]
-read(ClientId) ->
-    Txn = fun() ->
-        mnesia:read(twitch_credentials, ClientId)
-    end,
-    mnesia:activity(transaction, Txn).
 
 start_link(ClientId, Secret) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, {ClientId, Secret}, []).
@@ -120,3 +68,69 @@ handle_info(
     {reply, State};
 handle_info(_Msg, State) ->
     {noreply, State}.
+
+%% INTERNAL UTILITIES
+
+create(#twitch_credentials{
+    client_id = ClientId,
+    secret = Secret,
+    access_token = none,
+    refresh_token = none
+}) ->
+    Contents = json:encode(#{secret => Secret}),
+    create_body(ClientId, Contents);
+create(#twitch_credentials{
+    client_id = ClientId,
+    secret = Secret,
+    access_token = AccessToken,
+    refresh_token = RefreshToken
+}) ->
+    Contents = json:encode(#{
+        secret => Secret,
+        access_token => AccessToken,
+        refresh_token => RefreshToken
+    }),
+    create_body(ClientId, Contents).
+
+read(ClientId) ->
+    maybe
+        Filename = make_filename(ClientId),
+        {ok, Contents} = file:read_file(Filename),
+        Decoded = json:decode(Contents),
+        {ok, Secret} = maps:find(~"secret", Decoded),
+        AccessToken = maps:get(~"access_token", Decoded, none),
+        RefreshToken = maps:get(~"refresh_token", Decoded, none),
+        {ok, #twitch_credentials{
+            client_id = ClientId,
+            secret = Secret,
+            access_token = AccessToken,
+            refresh_token = RefreshToken
+        }}
+    else
+        {error, _} -> {error, not_found}
+    end.
+
+make_dir_if_not_exists() ->
+    Dir = filename:basedir(user_data, ~"focus"),
+    case file:make_dir(Dir) of
+        ok -> ok;
+        {error, eexist} -> ok;
+        {error, _} -> error
+    end.
+
+make_filename(ClientId) ->
+    filename:basedir(
+        user_data,
+        <<"focus/", ClientId/binary, ".json">>
+    ).
+
+create_body(ClientId, Contents) ->
+    maybe
+        ok = make_dir_if_not_exists(),
+        Filename = make_filename(ClientId),
+        ok = file:write_file(Filename, Contents),
+        ok
+    else
+        {error, _} ->
+            error
+    end.

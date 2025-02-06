@@ -12,9 +12,9 @@ TODO
   - [x] Need an index.html with a single button to start the flow
   - [x] Redirect user to handle OAuth
   - [ ] Store and retrieve credentials
-    - [ ] focus:server should create mnesia schema and twitch_credential table
-          if they don't exist. 
-    - [ ] focus:server should control starting mnesia on focus@hostname
+    - [ ] Since we require the secret to initialize the server it doesn't need to be serialized
+    - [ ] In continue, try to read existing credentials
+    - [ ] When updating the credentials, write the file
   - [ ] Redirect user to complete.html
   - [ ] Handle request from Twitch
 - [ ] refactor `twitch` module, it shouldn't really require `maybe` expressions.
