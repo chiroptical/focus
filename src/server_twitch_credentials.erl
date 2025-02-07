@@ -13,11 +13,9 @@
     handle_continue/2
 ]).
 
-% TODO: We need to store the credential expiry
+% TODO: We need to store the credential using create/4
+% TODO: In init, we should attempt to read the credentials using read/0
 % TODO: The focus server supervisor should start this process
-% TODO: If our credentials are expired, fetch new ones.
-%       Should happen in continue in init/1 and in check_credentials loop.
-% TODO: Add a function refresh_credentials/0
 
 -record(twitch_credentials, {
     client_id,
