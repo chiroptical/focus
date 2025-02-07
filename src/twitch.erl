@@ -8,7 +8,8 @@
     subscribe/2,
     handle_notification/2,
     msg/1,
-    ban/1
+    ban/1,
+    refresh_token/3
 ]).
 
 get_env(Key) ->
@@ -167,6 +168,35 @@ subscribe(chat, WebsocketSessionId) ->
         }
     ).
 
+refresh_token(ClientId, Secret, RefreshToken) ->
+    maybe
+        {ok, 200, _Headers, Body} =
+            restc:request(
+                post,
+                json,
+                "https://id.twitch.tv/oauth2/token",
+                [200],
+                [{}]#{
+                    client_id => ClientId,
+                    client_secret => Secret,
+                    grant_type => refresh_token,
+                    refresh_token => RefreshToken
+                },
+                []
+            ),
+        {ok, AccessToken} = maps:find(~"access_token", Body),
+        {ok, NextRefreshToken} = maps:find(~"refresh_token", Body),
+        {ok, AccessToken, NextRefreshToken}
+    else
+        Err = {error, _} ->
+            Err;
+        {error, Status, _ErrHeaders, ErrBody} ->
+            {error, {Status, ErrBody}}
+    end.
+
+% TODO: We need to gracefully handle 200 and 401's from this endpoint
+% TODO: Function should input AccessToken
+% https://dev.twitch.tv/docs/authentication/validate-tokens
 auth() ->
     maybe
         {ok, TwitchEnv} = env(),

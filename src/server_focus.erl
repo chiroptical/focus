@@ -113,8 +113,8 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 handle_continue(upgrade_connection, #state{gun_connection_pid = ConnPid} = State) ->
-    devlog:log(awaiting_gun_up),
+    devlog:log(#{start => awaiting_gun_up}),
     {ok, _Protocol} = gun:await_up(ConnPid),
-    devlog:log(start_ws_upgrade),
+    devlog:log(#{start => ws_upgrade}),
     gun:ws_upgrade(ConnPid, "/ws"),
     {noreply, State}.
