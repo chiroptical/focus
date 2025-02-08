@@ -29,7 +29,9 @@ TODO
 - [ ] Store twitch user name to user id mnesia table
 - [ ] Store twitch messages in mnesia table
 - [ ] can we automatically get the two nodes `focus` and `devlog` to be connected?
-  - See https://www.erlang.org/doc/apps/kernel/net_adm.html
+  - Use `net_adm:localhost()` to get, e.g., `wilder`
+  - When starting either server, just try `net_adm:ping(focus@wilder)` and `net_adm:ping(devlog@wilder)`
+  - Note: you can use `list_to_atom/1` to convert a string to an atom
 - [ ] Record video to set this up in Erlang
 - [ ] Record video to set this up in Elixir
 - [ ] Record video to set this up in Gleam
