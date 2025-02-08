@@ -6,10 +6,23 @@
     init/1
 ]).
 
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+get_env(Key) ->
+    case os:getenv(Key) of
+        false ->
+            {error, {key_not_set, Key}};
+        Value ->
+            {ok, list_to_binary(Value)}
+    end.
 
-init([]) ->
+start_link() ->
+    case get_env("TWITCH_CLIENT_ID") of
+        {error, _} ->
+            logger:notice(#{error => ~"You need to set TWITCH_CLIENT_ID!"});
+        {ok, ClientId} ->
+            supervisor:start_link({local, ?MODULE}, ?MODULE, ClientId)
+    end.
+
+init(ClientId) ->
     SupFlags = #{
         strategy => one_for_all,
         intensity => 0,
@@ -19,6 +32,10 @@ init([]) ->
         #{
             id => focus,
             start => {server_focus, start_link, []}
+        },
+        #{
+            id => credential_manager,
+            start => {server_twitch_credentials, start_link, [ClientId]}
         }
     ],
     {ok, {SupFlags, ChildSpecs}}.

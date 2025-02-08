@@ -4,7 +4,7 @@
     env/0,
     parse_message_type/1,
     message_action/2,
-    auth/0,
+    auth/1,
     subscribe/2,
     handle_notification/2,
     msg/1,
@@ -168,6 +168,13 @@ subscribe(chat, WebsocketSessionId) ->
         }
     ).
 
+% TODO: We really shouldn't use proplists for lookups EVER
+safe_find(Key, List) ->
+    case proplists:get_value(Key, List) of
+        undefined -> {error, {key_not_found, Key}};
+        Value -> {ok, Value}
+    end.
+
 refresh_token(ClientId, Secret, RefreshToken) ->
     maybe
         {ok, 200, _Headers, Body} =
@@ -176,7 +183,8 @@ refresh_token(ClientId, Secret, RefreshToken) ->
                 json,
                 "https://id.twitch.tv/oauth2/token",
                 [200],
-                [{}]#{
+                [],
+                #{
                     client_id => ClientId,
                     client_secret => Secret,
                     grant_type => refresh_token,
@@ -184,8 +192,8 @@ refresh_token(ClientId, Secret, RefreshToken) ->
                 },
                 []
             ),
-        {ok, AccessToken} = maps:find(~"access_token", Body),
-        {ok, NextRefreshToken} = maps:find(~"refresh_token", Body),
+        {ok, AccessToken} = safe_find(~"access_token", Body),
+        {ok, NextRefreshToken} = safe_find(~"refresh_token", Body),
         {ok, AccessToken, NextRefreshToken}
     else
         Err = {error, _} ->
@@ -194,27 +202,28 @@ refresh_token(ClientId, Secret, RefreshToken) ->
             {error, {Status, ErrBody}}
     end.
 
-% TODO: We need to gracefully handle 200 and 401's from this endpoint
-% TODO: Function should input AccessToken
-% https://dev.twitch.tv/docs/authentication/validate-tokens
-auth() ->
+auth(AccessToken) ->
     maybe
-        {ok, TwitchEnv} = env(),
-        {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
-        {ok, 200, _Headers, Body} =
+        {ok, Status, _Headers, Body} =
             restc:request(
                 get,
                 json,
                 "https://id.twitch.tv/oauth2/validate",
-                [200],
-                [{<<"Authorization">>, <<"OAuth ", UserAccessToken/binary>>}]
+                [200, 401],
+                [{<<"Authorization">>, <<"OAuth ", AccessToken/binary>>}]
             ),
-        {ok, Body}
+        case Status of
+            200 ->
+                {ok, ExpiresIn} = maps:find(~"expires_in", Body),
+                {ok, ExpiresIn};
+            401 ->
+                {error, refresh_token}
+        end
     else
         Err = {error, _} ->
             Err;
-        {error, Status, _ErrHeaders, ErrBody} ->
-            {error, Status, ErrBody}
+        {error, ErrStatus, _ErrHeaders, ErrBody} ->
+            {error, {ErrStatus, ErrBody}}
     end.
 
 twitch_user_id(TwitchEnv, UserName) ->

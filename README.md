@@ -11,12 +11,13 @@ TODO
 - [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
   - [x] Need an index.html with a single button to start the flow
   - [x] Redirect user to handle OAuth
-  - [ ] Store and retrieve credentials
-    - [ ] Since we require the secret to initialize the server it doesn't need to be serialized
-    - [ ] In continue, try to read existing credentials
-    - [ ] When updating the credentials, write the file
+  - [x] Store and retrieve credentials
+  - [ ] Add `server_twitch_credentials:update/2`
   - [ ] Redirect user to complete.html
-  - [ ] Handle request from Twitch
+  - [ ] Handle request from Twitch, write the credentials, update the credential
+        manager if it is running.
+- [ ] Separate `twitch` module into `twitch_auth`, `twitch_api`, `twitch_websocket`
+- [ ] The `twitch_api` module should fetch credentials for requests from the manager
 - [ ] refactor `twitch` module, it shouldn't really require `maybe` expressions.
       the maybe expressions are the responsibility of the caller.
 - [ ] Break up `twitch:subscribe/2` into more specific functions
@@ -28,6 +29,7 @@ TODO
 - [ ] Store twitch user name to user id mnesia table
 - [ ] Store twitch messages in mnesia table
 - [ ] can we automatically get the two nodes `focus` and `devlog` to be connected?
+  - See https://www.erlang.org/doc/apps/kernel/net_adm.html
 - [ ] Record video to set this up in Erlang
 - [ ] Record video to set this up in Elixir
 - [ ] Record video to set this up in Gleam

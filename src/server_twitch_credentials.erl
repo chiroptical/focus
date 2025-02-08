@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([
-    start_link/2
+    start_link/1
 ]).
 -export([
     init/1,
@@ -13,25 +13,25 @@
     handle_continue/2
 ]).
 
-% TODO: We need to store the credential using create/4
-% TODO: In init, we should attempt to read the credentials using read/0
-% TODO: The focus server supervisor should start this process
+% TODO: Reduce 'THIRTY_MINUTES_MS' to ~2 minutes and test off screen
+% TODO: Write 'update_credentials(AccessToken, RefreshToken)' cast the update
+%       ensuring to write the credentials file
 
 -record(twitch_credentials, {
     client_id,
-    secret,
+    secret = none,
     access_token = none,
     refresh_token = none
 }).
 
-start_link(ClientId, Secret) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, {ClientId, Secret}, []).
+start_link(ClientId) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, ClientId, []).
 
 -define(THIRTY_MINUTES_MS, 1_800_000).
 
-init({ClientId, Secret}) ->
+init(ClientId) ->
     erlang:send_after(?THIRTY_MINUTES_MS, self(), check_credentials),
-    {ok, #twitch_credentials{client_id = ClientId, secret = Secret}, {continue, check_credentials}}.
+    {ok, #twitch_credentials{client_id = ClientId}, {continue, check_credentials}}.
 
 handle_call(
     read,
@@ -44,6 +44,14 @@ handle_call(
         {_, _} -> {reply, {ok, AccessToken, RefreshToken}, State}
     end.
 
+handle_cast(write_credentials, State) ->
+    case create(State) of
+        ok ->
+            {noreply, State};
+        error ->
+            devlog:log(#{handle_cast => write_credentials, error => unable_to_write_credentials}),
+            {noreply, State}
+    end;
 handle_cast({update, AccessToken, RefreshToken}, _State) ->
     {noreply, #twitch_credentials{access_token = AccessToken, refresh_token = RefreshToken}};
 handle_cast(_Msg, State) ->
@@ -51,30 +59,62 @@ handle_cast(_Msg, State) ->
 
 handle_info(
     check_credentials,
-    #twitch_credentials{access_token = AccessToken, refresh_token = RefreshToken} = State
+    #twitch_credentials{access_token = AccessToken} = State
 ) ->
     erlang:send_after(?THIRTY_MINUTES_MS, self(), check_credentials),
 
-    % TODO: Do twitch:auth(AccessToken),
-    % if 200 and expires in >30 minutes, {noreply, State}
-    % if 401, run refresh_credentials, update State
-
-    {noreply, State};
+    maybe
+        case twitch:auth(AccessToken) of
+            {ok, ExpiresIn} when ExpiresIn =< 1800 ->
+                {ok, NewAccessToken, NewRefreshToken} =
+                    check_credentials(State, refresh),
+                {noreply, State#twitch_credentials{
+                    access_token = NewAccessToken, refresh_token = NewRefreshToken
+                }};
+            {ok, _ExpiresIn} ->
+                {noreply, State};
+            {error, refresh_token} ->
+                {ok, NewAccessToken, NewRefreshToken} =
+                    check_credentials(State, refresh),
+                {noreply, State#twitch_credentials{
+                    access_token = NewAccessToken, refresh_token = NewRefreshToken
+                }};
+            {error, Error} ->
+                devlog:log(#{handle_info => check_credentials, error => Error}),
+                {noreply, State}
+        end
+    else
+        {error, needs_oauth_flow} ->
+            logger:log("Run the oauth code!"),
+            {noreply, State};
+        {error, Err} ->
+            devlog:log(#{handle_info => check_credentials, error => Err}),
+            {noreply, State}
+    end;
 handle_info(_Msg, State) ->
     {noreply, State}.
 
-handle_continue(check_credentials, State) ->
-    case check_credentials(State, initial) of
-        ok ->
-            {noreply, State};
-        {ok, AccessToken, RefreshToken} ->
-            {noreply, State#twitch_credentials{
-                access_token = AccessToken, refresh_token = RefreshToken
-            }};
-        {error, needs_oauth_flow} ->
-            logger:notice(#{credential_manager => "Run oauth flow!"});
-        {error, Error} ->
-            devlog:log(#{handle_continue => check_credentials, error => Error})
+handle_continue(check_credentials, #twitch_credentials{client_id = ClientId} = State) ->
+    case read(ClientId) of
+        {ok, NewState} ->
+            case check_credentials(NewState, refresh) of
+                ok ->
+                    {noreply, NewState};
+                {ok, AccessToken, RefreshToken} ->
+                    gen_server:cast(self(), write_credentials),
+                    {noreply, NewState#twitch_credentials{
+                        access_token = AccessToken, refresh_token = RefreshToken
+                    }};
+                {error, needs_oauth_flow} ->
+                    logger:notice(#{credential_manager => "Run oauth flow!"}),
+                    {noreply, NewState};
+                {error, Error} ->
+                    devlog:log(#{handle_continue => check_credentials, error => Error}),
+                    {noreply, NewState}
+            end;
+        {error, not_found} ->
+            logger:notice(#{credential_manager => "Run oauth flow!"}),
+            {noreply, State}
     end;
 handle_continue(Msg, State) ->
     devlog:log(#{got_unknown_msg => Msg}),
@@ -94,7 +134,7 @@ check_credentials(
     Refresh =
         case {AccessToken, RefreshToken, Param} of
             {none, none, _} -> needs_oauth_flow;
-            {_, _, initial} -> true;
+            {_, _, refresh} -> true;
             {_, _, _} -> false
         end,
     case Refresh of
@@ -103,7 +143,7 @@ check_credentials(
             {error, needs_oauth_flow};
         % No refresh is needed, credentials are good
         false ->
-            ok;
+            {ok, AccessToken, RefreshToken};
         % Refresh needed, use refresh token to fetch new oauth token
         true ->
             twitch:refresh_token(ClientId, Secret, RefreshToken)
