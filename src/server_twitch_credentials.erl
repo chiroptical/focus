@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([
-    start_link/1
+    start_link/2
 ]).
 -export([
     init/1,
@@ -19,19 +19,24 @@
 
 -record(twitch_credentials, {
     client_id,
-    secret = none,
+    secret,
     access_token = none,
     refresh_token = none
 }).
 
-start_link(ClientId) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, ClientId, []).
+start_link(ClientId, ClientSecret) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, {ClientId, ClientSecret}, []).
 
 -define(THIRTY_MINUTES_MS, 1_800_000).
 
-init(ClientId) ->
+init({ClientId, ClientSecret}) ->
     erlang:send_after(?THIRTY_MINUTES_MS, self(), check_credentials),
-    {ok, #twitch_credentials{client_id = ClientId}, {continue, check_credentials}}.
+    {ok,
+        #twitch_credentials{
+            client_id = ClientId,
+            secret = ClientSecret
+        },
+        {continue, check_credentials}}.
 
 handle_call(
     read,
@@ -96,14 +101,18 @@ handle_info(_Msg, State) ->
 
 handle_continue(check_credentials, #twitch_credentials{client_id = ClientId} = State) ->
     case read(ClientId) of
-        {ok, NewState} ->
+        {ok, AccessToken, RefreshToken} ->
+            NewState = State#twitch_credentials{
+                access_token = AccessToken,
+                refresh_token = RefreshToken
+            },
             case check_credentials(NewState, refresh) of
                 ok ->
                     {noreply, NewState};
-                {ok, AccessToken, RefreshToken} ->
+                {ok, NewAccessToken, NewRefreshToken} ->
                     gen_server:cast(self(), write_credentials),
                     {noreply, NewState#twitch_credentials{
-                        access_token = AccessToken, refresh_token = RefreshToken
+                        access_token = NewAccessToken, refresh_token = NewRefreshToken
                     }};
                 {error, needs_oauth_flow} ->
                     logger:notice(#{credential_manager => "Run oauth flow!"}),
@@ -151,20 +160,17 @@ check_credentials(
 
 create(#twitch_credentials{
     client_id = ClientId,
-    secret = Secret,
     access_token = none,
     refresh_token = none
 }) ->
-    Contents = json:encode(#{secret => Secret}),
+    Contents = json:encode(#{}),
     create_body(ClientId, Contents);
 create(#twitch_credentials{
     client_id = ClientId,
-    secret = Secret,
     access_token = AccessToken,
     refresh_token = RefreshToken
 }) ->
     Contents = json:encode(#{
-        secret => Secret,
         access_token => AccessToken,
         refresh_token => RefreshToken
     }),
@@ -175,15 +181,9 @@ read(ClientId) ->
         Filename = make_filename(ClientId),
         {ok, Contents} = file:read_file(Filename),
         Decoded = json:decode(Contents),
-        {ok, Secret} = maps:find(~"secret", Decoded),
         AccessToken = maps:get(~"access_token", Decoded, none),
         RefreshToken = maps:get(~"refresh_token", Decoded, none),
-        {ok, #twitch_credentials{
-            client_id = ClientId,
-            secret = Secret,
-            access_token = AccessToken,
-            refresh_token = RefreshToken
-        }}
+        {ok, AccessToken, RefreshToken}
     else
         {error, _} -> {error, not_found}
     end.
