@@ -25,12 +25,14 @@ env() ->
         {ok, ClientId} = get_env("TWITCH_CLIENT_ID"),
         {ok, RefreshToken} = get_env("TWITCH_REFRESH_TOKEN"),
         {ok, UserId} = get_env("TWITCH_USER_ID"),
+        {ok, RedirectUri} = get_env("TWITCH_REDIRECT_URI"),
         {ok, #{
             secret => Secret,
             user_access_token => UserAccessToken,
             client_id => ClientId,
             refresh_token => RefreshToken,
-            user_id => UserId
+            user_id => UserId,
+            redirect_uri => RedirectUri
         }}
     else
         Err = {error, {key_not_set, _}} -> Err
@@ -165,13 +167,6 @@ subscribe(chat, WebsocketSessionId) ->
             }
         }
     ).
-
-% TODO: We really shouldn't use proplists for lookups EVER
-safe_find(Key, List) ->
-    case proplists:get_value(Key, List) of
-        undefined -> {error, {key_not_found, Key}};
-        Value -> {ok, Value}
-    end.
 
 twitch_user_id(TwitchEnv, UserName) ->
     maybe

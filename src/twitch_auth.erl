@@ -2,7 +2,8 @@
 
 -export([
     validate/1,
-    refresh_token/3
+    refresh_token/3,
+    token/4
 ]).
 
 validate(AccessToken) ->
@@ -17,7 +18,7 @@ validate(AccessToken) ->
             ),
         case Status of
             200 ->
-                {ok, ExpiresIn} = maps:find(~"expires_in", Body),
+                {ok, ExpiresIn} = utils_proplists:find(~"expires_in", Body),
                 {ok, ExpiresIn};
             401 ->
                 {error, refresh_token}
@@ -46,9 +47,37 @@ refresh_token(ClientId, Secret, RefreshToken) ->
                 },
                 []
             ),
-        {ok, AccessToken} = safe_find(~"access_token", Body),
-        {ok, NextRefreshToken} = safe_find(~"refresh_token", Body),
+        {ok, AccessToken} = utils_proplists:find(~"access_token", Body),
+        {ok, NextRefreshToken} = utils_proplists:find(~"refresh_token", Body),
         {ok, AccessToken, NextRefreshToken}
+    else
+        Err = {error, _} ->
+            Err;
+        {error, Status, _ErrHeaders, ErrBody} ->
+            {error, {Status, ErrBody}}
+    end.
+
+token(ClientId, Secret, RedirectUri, AuthCode) ->
+    maybe
+        {ok, 200, _Headers, Body} =
+            restc:request(
+                post,
+                json,
+                "https://id.twitch.tv/oauth2/token",
+                [200],
+                [],
+                #{
+                    client_id => ClientId,
+                    client_secret => Secret,
+                    grant_type => authorization_code,
+                    code => AuthCode,
+                    redirect_uri => RedirectUri
+                },
+                []
+            ),
+        {ok, AccessToken} = utils_proplists:find(~"access_token", Body),
+        {ok, RefreshToken} = utils_proplists:find(~"refresh_token", Body),
+        {ok, AccessToken, RefreshToken}
     else
         Err = {error, _} ->
             Err;

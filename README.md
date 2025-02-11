@@ -8,14 +8,9 @@ Developed live on [![Chiroptical](https://img.shields.io/badge/twitch.tv-chiropt
 TODO
 ---
 
-- [ ] Add a small cowboy server to handle user auth token https://ninenines.eu/docs/en/cowboy/2.9/guide/static_files/
-  - [x] Need an index.html with a single button to start the flow
-  - [x] Redirect user to handle OAuth
-  - [x] Store and retrieve credentials
-  - [ ] Add `server_twitch_credentials:update/2`
-  - [ ] Redirect user to complete.html
-  - [ ] Handle request from Twitch, write the credentials, update the credential
-        manager if it is running.
+- [ ] Twitch credential manager should be part of focus:server supervisor.
+      Need to go through and properly handle errors with `maybe` to avoid leaking credentials.
+- [ ] Should start cowboy server as `focus:oauth(start)/focus:oauth(end)`
 - [ ] Separate `twitch` module into `twitch_auth`, `twitch_api`, `twitch_websocket`
 - [ ] The `twitch_api` module should fetch credentials for requests from the manager
 - [ ] refactor `twitch` module, it shouldn't really require `maybe` expressions.

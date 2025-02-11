@@ -3,7 +3,8 @@
 -behaviour(gen_server).
 
 -export([
-    start_link/2
+    start_link/2,
+    put_credentials/2
 ]).
 -export([
     init/1,
@@ -14,8 +15,6 @@
 ]).
 
 % TODO: Reduce 'THIRTY_MINUTES_MS' to ~2 minutes and test off screen
-% TODO: Write 'update_credentials(AccessToken, RefreshToken)' cast the update
-%       ensuring to write the credentials file
 
 -record(twitch_credentials, {
     client_id,
@@ -26,6 +25,9 @@
 
 start_link(ClientId, ClientSecret) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, {ClientId, ClientSecret}, []).
+
+put_credentials(AccessToken, RefreshToken) ->
+    gen_server:cast(self(), {update, AccessToken, RefreshToken}).
 
 -define(THIRTY_MINUTES_MS, 1_800_000).
 
@@ -57,8 +59,11 @@ handle_cast(write_credentials, State) ->
             devlog:log(#{handle_cast => write_credentials, error => unable_to_write_credentials}),
             {noreply, State}
     end;
-handle_cast({update, AccessToken, RefreshToken}, _State) ->
-    {noreply, #twitch_credentials{access_token = AccessToken, refresh_token = RefreshToken}};
+handle_cast({update, AccessToken, RefreshToken}, State) ->
+    NewState = State#twitch_credentials{access_token = AccessToken, refresh_token = RefreshToken},
+    %% Write the credentials to the filesystem
+    create(NewState),
+    {noreply, NewState};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

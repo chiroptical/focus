@@ -18,7 +18,7 @@ start_link() ->
     maybe
         {ok, ClientId} = get_env("TWITCH_CLIENT_ID"),
         {ok, ClientSecret} = get_env("TWITCH_SECRET"),
-        ok = supervisor:start_link({local, ?MODULE}, ?MODULE, {ClientId, ClientSecret})
+        supervisor:start_link({local, ?MODULE}, ?MODULE, {ClientId, ClientSecret})
     else
         {error, {key_not_set, Key}} ->
             logger:notice(#{error => ~"Missing env var", env_var => Key});

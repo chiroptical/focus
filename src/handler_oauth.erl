@@ -35,27 +35,27 @@ init(#{path := ~"/", method := ~"GET"} = Req0, State) ->
         Req0
     ),
     {ok, Req, State};
-%% TODO: Store 'Secret' in 'State' so we can look it back up
 init(#{path := ~"/oauth/begin", method := ~"GET"} = Req0, State) ->
     maybe
         devlog:log(#{state => State}),
         {ok, TwitchEnv} = twitch:env(),
         {ok, ClientId} = maps:find(client_id, TwitchEnv),
+        {ok, RedirectUri} = maps:find(redirect_uri, TwitchEnv),
         % QUESTION: Is 16 bytes enough?
-        Secret = base64:encode(crypto:strong_rand_bytes(16)),
+        CsrfToken = base64:encode(crypto:strong_rand_bytes(16)),
         TwitchUrl = restc:construct_url(
             "https://id.twitch.tv",
             "oauth2/authorize",
             [
                 {"client_id", ClientId},
-                {"redirect_uri", "http:localhost:8080/oauth/end"},
+                {"redirect_uri", RedirectUri},
                 {"response_type", "code"},
                 {"scope",
                     <<"user:read:chat ",
                         "user:write:chat "
                         "moderator:read:followers "
                         "channel:read:subscriptions">>},
-                {"state", Secret}
+                {"state", CsrfToken}
             ]
         ),
         Req = cowboy_req:reply(
@@ -64,7 +64,7 @@ init(#{path := ~"/oauth/begin", method := ~"GET"} = Req0, State) ->
             ~"",
             Req0
         ),
-        {ok, Req, State}
+        {ok, Req, [{csrf_token, CsrfToken} | State]}
     else
         _Err ->
             Req500 = cowboy_req:reply(
@@ -75,16 +75,43 @@ init(#{path := ~"/oauth/begin", method := ~"GET"} = Req0, State) ->
             ),
             {ok, Req500, State}
     end;
-%% DOCS: https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#authorization-code-grant-flow
-%% TODO: Finish this handler for Twitch's redirect, see 'DOCS'
-%% TODO: Store the results in an mnesia table
-%% TODO: Use the authorization code to get a token, see 'DOCS'
 init(#{path := ~"/oauth/end", method := ~"GET"} = Req0, State) ->
-    View = view(~"All done!"),
-    Req = cowboy_req:reply(
-        200,
-        #{~"content-type" => ~"text/html"},
-        e2h:render_html(View),
+    {ok, CsrfToken} = utils_proplists:find(csrf_token, State),
+    #{code := AuthCode, state := GotCsrfToken} = cowboy_req:match_qs(
+        [
+            {code, nonempty},
+            {state, nonempty}
+        ],
         Req0
     ),
-    {ok, Req, State}.
+    case CsrfToken =:= GotCsrfToken of
+        true ->
+            {ok, TwitchEnv} = twitch:env(),
+            {ok, ClientId} = maps:find(client_id, TwitchEnv),
+            {ok, Secret} = maps:find(secret, TwitchEnv),
+            {ok, RedirectUri} = maps:find(redirect_uri, TwitchEnv),
+            {ok, AccessToken, RefreshToken} = twitch_auth:token(
+                ClientId,
+                Secret,
+                RedirectUri,
+                AuthCode
+            ),
+            ok = server_twitch_credentials:put_credentials(AccessToken, RefreshToken),
+            View = view(~"All done!"),
+            Req = cowboy_req:reply(
+                200,
+                #{~"content-type" => ~"text/html"},
+                e2h:render_html(View),
+                Req0
+            ),
+            {ok, Req, State};
+        false ->
+            View = view(~"Incorrect CSRF Token!"),
+            Req = cowboy_req:reply(
+                200,
+                #{~"content-type" => ~"text/html"},
+                e2h:render_html(View),
+                Req0
+            ),
+            {ok, Req, State}
+    end.
