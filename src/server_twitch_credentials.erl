@@ -69,7 +69,7 @@ handle_info(
     erlang:send_after(?THIRTY_MINUTES_MS, self(), check_credentials),
 
     maybe
-        case twitch:auth(AccessToken) of
+        case twitch_auth:validate(AccessToken) of
             {ok, ExpiresIn} when ExpiresIn =< 1800 ->
                 {ok, NewAccessToken, NewRefreshToken} =
                     check_credentials(State, refresh),
@@ -155,7 +155,7 @@ check_credentials(
             {ok, AccessToken, RefreshToken};
         % Refresh needed, use refresh token to fetch new oauth token
         true ->
-            twitch:refresh_token(ClientId, Secret, RefreshToken)
+            twitch_auth:refresh_token(ClientId, Secret, RefreshToken)
     end.
 
 create(#twitch_credentials{
