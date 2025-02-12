@@ -19,7 +19,7 @@ start_link() ->
 
 init([]) ->
     {ok, ConnPid} = gun:open(
-        "eventsub.wss.twitch.tv?keepalive_timeout_seconds=300",
+        "eventsub.wss.twitch.tv",
         443,
         #{
             protocols => [http],

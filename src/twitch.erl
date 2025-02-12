@@ -86,17 +86,16 @@ parse_message_type(TwitchMessage) ->
             {error, unable_to_parse}
     end.
 
-post(TwitchEnv, Url, Payload, StatusExpected) ->
+post(Url, Payload, StatusExpected) ->
     maybe
-        {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
-        {ok, ClientId} = maps:find(client_id, TwitchEnv),
+        {ok, {ClientId, AccessToken, _}} = server_twitch_credentials:read_credentials(),
         {ok, StatusExpected, _Headers, Body} = restc:request(
             post,
             json,
             Url,
             [StatusExpected],
             [
-                {~"Authorization", <<"Bearer ", UserAccessToken/binary>>},
+                {~"Authorization", <<"Bearer ", AccessToken/binary>>},
                 {~"Client-Id", ClientId}
             ],
             Payload,
@@ -107,18 +106,18 @@ post(TwitchEnv, Url, Payload, StatusExpected) ->
         Err = {error, _} ->
             Err;
         {error, ErrStatus, _ErrHeaders, ErrBody} ->
-            {error, ErrStatus, ErrBody}
+            {error, {ErrStatus, ErrBody}}
     end.
 
-eventsub_subscription(TwitchEnv, Payload) ->
-    post(TwitchEnv, "https://api.twitch.tv/helix/eventsub/subscriptions", Payload, 202).
+eventsub_subscription(Payload) ->
+    post("https://api.twitch.tv/helix/eventsub/subscriptions", Payload, 202).
 
 %% Example: https://dev.twitch.tv/docs/api/reference/#create-eventsub-subscription
+%% TODO: Use 'maybe' here to avoid env/0 or find/2 from failing
 subscribe(follows, WebsocketSessionId) ->
     {ok, TwitchEnv} = env(),
     {ok, UserId} = maps:find(user_id, TwitchEnv),
     eventsub_subscription(
-        TwitchEnv,
         #{
             type => ~"channel.follow",
             version => ~"2",
@@ -136,7 +135,6 @@ subscribe(subscribers, WebsocketSessionId) ->
     {ok, TwitchEnv} = env(),
     {ok, UserId} = maps:find(user_id, TwitchEnv),
     eventsub_subscription(
-        TwitchEnv,
         #{
             type => ~"channel.subscribe",
             version => ~"1",
@@ -153,7 +151,6 @@ subscribe(chat, WebsocketSessionId) ->
     {ok, TwitchEnv} = env(),
     {ok, UserId} = maps:find(user_id, TwitchEnv),
     eventsub_subscription(
-        TwitchEnv,
         #{
             type => ~"channel.chat.message",
             version => ~"1",
@@ -168,10 +165,9 @@ subscribe(chat, WebsocketSessionId) ->
         }
     ).
 
-twitch_user_id(TwitchEnv, UserName) ->
+twitch_user_id(UserName) ->
     maybe
-        {ok, ClientId} = maps:find(client_id, TwitchEnv),
-        {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
+        {ok, {ClientId, AccessToken}} = server_twitch_credentials:read_credentials(),
         {ok, 200, _Headers, Body} =
             restc:request(
                 get,
@@ -179,7 +175,7 @@ twitch_user_id(TwitchEnv, UserName) ->
                 restc:construct_url("https://api.twitch.tv/helix/users", [{"login", UserName}]),
                 [200],
                 [
-                    {<<"Authorization">>, <<"Bearer ", UserAccessToken/binary>>},
+                    {<<"Authorization">>, <<"Bearer ", AccessToken/binary>>},
                     {~"Client-Id", ClientId}
                 ]
             ),
@@ -188,7 +184,7 @@ twitch_user_id(TwitchEnv, UserName) ->
         Err = {error, _} ->
             Err;
         {error, Status, _ErrHeaders, ErrBody} ->
-            {error, Status, ErrBody}
+            {error, {Status, ErrBody}}
     end.
 
 safe_head([X]) ->
@@ -198,16 +194,18 @@ safe_head(_) ->
 
 ban(UserName) when is_binary(UserName) ->
     maybe
+        % Grab the streamer id from the environment variable
         {ok, TwitchEnv} = env(),
         {ok, StreamerId} = maps:find(user_id, TwitchEnv),
-        {ok, UserResponse} = twitch_user_id(TwitchEnv, UserName),
+        % As Twitch what the user_id of a particular user is
+        {ok, UserResponse} = twitch_user_id(UserName),
         {ok, {_, UserDataList}} = safe_head(UserResponse),
         {ok, UserData} = safe_head(UserDataList),
         UserDataMap = proplists:to_map(UserData),
         {ok, UserId} = maps:find(~"id", UserDataMap),
+        % Ban that user into oblivion
         {ok, _Body} =
             post(
-                TwitchEnv,
                 restc:construct_url(
                     "https://api.twitch.tv/helix/moderation/bans",
                     [
@@ -228,7 +226,7 @@ ban(UserName) when is_binary(UserName) ->
         Err = {error, _} ->
             Err;
         {error, Status, _ErrHeaders, ErrBody} ->
-            {error, Status, ErrBody}
+            {error, {Status, ErrBody}}
     end.
 
 msg(Message) when is_binary(Message) ->
@@ -237,7 +235,6 @@ msg(Message) when is_binary(Message) ->
         {ok, UserId} = maps:find(user_id, TwitchEnv),
         {ok, _Body} =
             post(
-                TwitchEnv,
                 "https://api.twitch.tv/helix/chat/messages",
                 #{
                     broadcaster_id => UserId,
@@ -251,7 +248,7 @@ msg(Message) when is_binary(Message) ->
         Err = {error, _} ->
             Err;
         {error, Status, _ErrHeaders, ErrBody} ->
-            {error, Status, ErrBody}
+            {error, {Status, ErrBody}}
     end.
 
 from_tier(~"1000") ->

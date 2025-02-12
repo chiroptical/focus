@@ -8,28 +8,30 @@ Developed live on [![Chiroptical](https://img.shields.io/badge/twitch.tv-chiropt
 TODO
 ---
 
-- [ ] Twitch credential manager should be part of focus:server supervisor.
+- [ ] Credential manager should be started with `focus:cm/0`.
       Need to go through and properly handle errors with `maybe` to avoid leaking credentials.
 - [ ] Should start cowboy server as `focus:oauth(start)/focus:oauth(end)`
+- [ ] Test the oauth server by removing `~/.local/share/focus`
 - [ ] Separate `twitch` module into `twitch_auth`, `twitch_api`, `twitch_websocket`
 - [ ] The `twitch_api` module should fetch credentials for requests from the manager
-- [ ] refactor `twitch` module, it shouldn't really require `maybe` expressions.
-      the maybe expressions are the responsibility of the caller.
 - [ ] Break up `twitch:subscribe/2` into more specific functions
 - [ ] See https://github.com/chiroptical/focus/issues/2
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#reconnect-message
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#revocation-message
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#close-message
-- [ ] Add convenient mechanism to stop `server_focus`
-- [ ] Store twitch user name to user id mnesia table
-- [ ] Store twitch messages in mnesia table
+- [ ] Add convenient mechanism to stop `server_focus`, e.g. `focus:server(start)`
 - [ ] can we automatically get the two nodes `focus` and `devlog` to be connected?
   - Use `net_adm:localhost()` to get, e.g., `wilder`
   - When starting either server, just try `net_adm:ping(focus@wilder)` and `net_adm:ping(devlog@wilder)`
   - Note: you can use `list_to_atom/1` to convert a string to an atom
+- [ ] Try setting up focus in another project as a dev dependency
 - [ ] Record video to set this up in Erlang
 - [ ] Record video to set this up in Elixir
 - [ ] Record video to set this up in Gleam
+- [ ] Should we store user metadata? For example,
+      - Highlight @username in the user's specified color if we know it
+      - Recall a user's chat history to decide if we should ban them
+      - Store first time chatter messages and then release them, e.g. no follow bot messages
 
 Environment variables and set up
 ----

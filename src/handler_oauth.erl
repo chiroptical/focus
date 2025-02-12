@@ -96,7 +96,7 @@ init(#{path := ~"/oauth/end", method := ~"GET"} = Req0, State) ->
                 RedirectUri,
                 AuthCode
             ),
-            ok = server_twitch_credentials:put_credentials(AccessToken, RefreshToken),
+            ok = server_twitch_credentials:update_credentials(AccessToken, RefreshToken),
             View = view(~"All done!"),
             Req = cowboy_req:reply(
                 200,

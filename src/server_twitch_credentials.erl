@@ -4,7 +4,9 @@
 
 -export([
     start_link/2,
-    put_credentials/2
+    read_credentials/0,
+    read_credentials_inner/0,
+    update_credentials/2
 ]).
 -export([
     init/1,
@@ -13,8 +15,6 @@
     handle_info/2,
     handle_continue/2
 ]).
-
-% TODO: Reduce 'THIRTY_MINUTES_MS' to ~2 minutes and test off screen
 
 -record(twitch_credentials, {
     client_id,
@@ -26,8 +26,24 @@
 start_link(ClientId, ClientSecret) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, {ClientId, ClientSecret}, []).
 
-put_credentials(AccessToken, RefreshToken) ->
-    gen_server:cast(self(), {update, AccessToken, RefreshToken}).
+% TODO: we'll likely need erpc:multicall here as well
+update_credentials(AccessToken, RefreshToken) ->
+    gen_server:cast(?MODULE, {update, AccessToken, RefreshToken}).
+
+% TODO: What happens if you separate the credential manager from the devlog in
+% another node?
+read_credentials() ->
+    maybe
+        [{ok, {ok, {ClientId, AccessToken, RefreshToken}}}] =
+            erpc:multicall(nodes(), ?MODULE, read_credentials_inner, []),
+        {ok, {ClientId, AccessToken, RefreshToken}}
+    else
+        {no_credentials} ->
+            {error, no_credentials}
+    end.
+
+read_credentials_inner() ->
+    gen_server:call(?MODULE, read).
 
 -define(THIRTY_MINUTES_MS, 1_800_000).
 
@@ -43,13 +59,24 @@ init({ClientId, ClientSecret}) ->
 handle_call(
     read,
     _From,
-    #twitch_credentials{access_token = AccessToken, refresh_token = RefreshToken} = State
+    #twitch_credentials{
+        access_token = AccessToken,
+        refresh_token = RefreshToken,
+        client_id = ClientId
+    } = State
 ) ->
     case {AccessToken, RefreshToken} of
         {none, _} -> {reply, no_credentials, State};
         {_, none} -> {reply, no_credentials, State};
-        {_, _} -> {reply, {ok, AccessToken, RefreshToken}, State}
-    end.
+        {_, _} -> {reply, {ok, {ClientId, AccessToken, RefreshToken}}, State}
+    end;
+handle_call(
+    Msg,
+    _From,
+    State
+) ->
+    devlog:log(#{handle_call => Msg}),
+    {noreply, State}.
 
 handle_cast(write_credentials, State) ->
     case create(State) of
