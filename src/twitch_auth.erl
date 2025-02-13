@@ -8,7 +8,7 @@
 
 validate(AccessToken) ->
     maybe
-        {ok, Status, _Headers, Body} =
+        {ok, Status, _Headers, Body} ?=
             restc:request(
                 get,
                 json,
@@ -18,8 +18,7 @@ validate(AccessToken) ->
             ),
         case Status of
             200 ->
-                {ok, ExpiresIn} = utils_proplists:find(~"expires_in", Body),
-                {ok, ExpiresIn};
+                utils_proplists:find(~"expires_in", Body);
             401 ->
                 {error, refresh_token}
         end
@@ -32,7 +31,7 @@ validate(AccessToken) ->
 
 refresh_token(ClientId, Secret, RefreshToken) ->
     maybe
-        {ok, 200, _Headers, Body} =
+        {ok, 200, _Headers, Body} ?=
             restc:request(
                 post,
                 json,
@@ -47,8 +46,8 @@ refresh_token(ClientId, Secret, RefreshToken) ->
                 },
                 []
             ),
-        {ok, AccessToken} = utils_proplists:find(~"access_token", Body),
-        {ok, NextRefreshToken} = utils_proplists:find(~"refresh_token", Body),
+        {ok, AccessToken} ?= utils_proplists:find(~"access_token", Body),
+        {ok, NextRefreshToken} ?= utils_proplists:find(~"refresh_token", Body),
         {ok, AccessToken, NextRefreshToken}
     else
         Err = {error, _} ->
@@ -59,7 +58,7 @@ refresh_token(ClientId, Secret, RefreshToken) ->
 
 token(ClientId, Secret, RedirectUri, AuthCode) ->
     maybe
-        {ok, 200, _Headers, Body} =
+        {ok, 200, _Headers, Body} ?=
             restc:request(
                 post,
                 json,
@@ -75,8 +74,8 @@ token(ClientId, Secret, RedirectUri, AuthCode) ->
                 },
                 []
             ),
-        {ok, AccessToken} = utils_proplists:find(~"access_token", Body),
-        {ok, RefreshToken} = utils_proplists:find(~"refresh_token", Body),
+        {ok, AccessToken} ?= utils_proplists:find(~"access_token", Body),
+        {ok, RefreshToken} ?= utils_proplists:find(~"refresh_token", Body),
         {ok, AccessToken, RefreshToken}
     else
         Err = {error, _} ->

@@ -39,7 +39,7 @@ read_credentials() ->
             {error, no_manager_present};
         Pid ->
             maybe
-                {ok, Credentials} = gen_server:cast(Pid, read),
+                {ok, Credentials} ?= gen_server:cast(Pid, read),
                 {ok, Credentials}
             else
                 no_credentials ->
@@ -106,7 +106,7 @@ handle_info(
     maybe
         case twitch_auth:validate(AccessToken) of
             {ok, ExpiresIn} when ExpiresIn =< 1800 ->
-                {ok, NewAccessToken, NewRefreshToken} =
+                {ok, NewAccessToken, NewRefreshToken} ?=
                     check_credentials(State, refresh),
                 {noreply, State#twitch_credentials{
                     access_token = NewAccessToken, refresh_token = NewRefreshToken
@@ -114,7 +114,7 @@ handle_info(
             {ok, _ExpiresIn} ->
                 {noreply, State};
             {error, refresh_token} ->
-                {ok, NewAccessToken, NewRefreshToken} =
+                {ok, NewAccessToken, NewRefreshToken} ?=
                     check_credentials(State, refresh),
                 {noreply, State#twitch_credentials{
                     access_token = NewAccessToken, refresh_token = NewRefreshToken
@@ -240,9 +240,9 @@ make_filename(ClientId) ->
 
 create_body(ClientId, Contents) ->
     maybe
-        ok = make_dir_if_not_exists(),
+        ok ?= make_dir_if_not_exists(),
         Filename = make_filename(ClientId),
-        ok = file:write_file(Filename, Contents),
+        ok ?= file:write_file(Filename, Contents),
         ok
     else
         {error, _} ->

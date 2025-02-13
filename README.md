@@ -8,7 +8,6 @@ Developed live on [![Chiroptical](https://img.shields.io/badge/twitch.tv-chiropt
 TODO
 ---
 
-- [ ] All maybe expressions need to use `?=`
 - [ ] Test the oauth server by removing `~/.local/share/focus`
 - [ ] Separate `twitch` module into `twitch_auth`, `twitch_api`, `twitch_websocket`
 - [ ] The `twitch_api` module should fetch credentials for requests from the manager
