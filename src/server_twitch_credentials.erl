@@ -214,13 +214,14 @@ create(#twitch_credentials{
 read(ClientId) ->
     maybe
         Filename = make_filename(ClientId),
-        {ok, Contents} = file:read_file(Filename),
+        {ok, Contents} ?= file:read_file(Filename),
         Decoded = json:decode(Contents),
         AccessToken = maps:get(~"access_token", Decoded, none),
         RefreshToken = maps:get(~"refresh_token", Decoded, none),
         {ok, AccessToken, RefreshToken}
     else
-        {error, _} -> {error, not_found}
+        {error, _} ->
+            {error, not_found}
     end.
 
 make_dir_if_not_exists() ->

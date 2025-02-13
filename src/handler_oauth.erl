@@ -37,10 +37,9 @@ init(#{path := ~"/", method := ~"GET"} = Req0, State) ->
     {ok, Req, State};
 init(#{path := ~"/oauth/begin", method := ~"GET"} = Req0, State) ->
     maybe
-        devlog:log(#{state => State}),
-        {ok, TwitchEnv} = twitch:env(),
-        {ok, ClientId} = maps:find(client_id, TwitchEnv),
-        {ok, RedirectUri} = maps:find(redirect_uri, TwitchEnv),
+        {ok, TwitchEnv} ?= twitch:env(),
+        {ok, ClientId} ?= maps:find(client_id, TwitchEnv),
+        {ok, RedirectUri} ?= maps:find(redirect_uri, TwitchEnv),
         % QUESTION: Is 16 bytes enough?
         CsrfToken = base64:encode(crypto:strong_rand_bytes(16)),
         TwitchUrl = restc:construct_url(
@@ -64,7 +63,8 @@ init(#{path := ~"/oauth/begin", method := ~"GET"} = Req0, State) ->
             ~"",
             Req0
         ),
-        {ok, Req, [{csrf_token, CsrfToken} | State]}
+        ets:insert(csrf_token, {token, CsrfToken}),
+        {ok, Req, State}
     else
         _Err ->
             Req500 = cowboy_req:reply(
@@ -76,7 +76,7 @@ init(#{path := ~"/oauth/begin", method := ~"GET"} = Req0, State) ->
             {ok, Req500, State}
     end;
 init(#{path := ~"/oauth/end", method := ~"GET"} = Req0, State) ->
-    {ok, CsrfToken} = utils_proplists:find(csrf_token, State),
+    [{token, CsrfToken}] = ets:lookup(csrf_token, token),
     #{code := AuthCode, state := GotCsrfToken} = cowboy_req:match_qs(
         [
             {code, nonempty},

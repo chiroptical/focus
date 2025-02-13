@@ -21,16 +21,12 @@ get_env(Key) ->
 env() ->
     maybe
         {ok, Secret} = get_env("TWITCH_SECRET"),
-        {ok, UserAccessToken} = get_env("TWITCH_USER_ACCESS_TOKEN"),
         {ok, ClientId} = get_env("TWITCH_CLIENT_ID"),
-        {ok, RefreshToken} = get_env("TWITCH_REFRESH_TOKEN"),
         {ok, UserId} = get_env("TWITCH_USER_ID"),
         {ok, RedirectUri} = get_env("TWITCH_REDIRECT_URI"),
         {ok, #{
             secret => Secret,
-            user_access_token => UserAccessToken,
             client_id => ClientId,
-            refresh_token => RefreshToken,
             user_id => UserId,
             redirect_uri => RedirectUri
         }}

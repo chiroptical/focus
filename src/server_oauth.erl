@@ -8,6 +8,7 @@
 ]).
 
 start(_Type, _Args) ->
+    ets:new(csrf_token, [set, named_table, public]),
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/", handler_oauth, []},
