@@ -3,7 +3,8 @@
 -export([
     server/0,
     devlog/0,
-    cm/0
+    cm/0,
+    oauth/1
 ]).
 
 server() ->
@@ -14,3 +15,8 @@ devlog() ->
 
 cm() ->
     supervisor_credential_manager:start_link().
+
+oauth(start) ->
+    server_oauth:start([], []);
+oauth(stop) ->
+    server_oauth:stop([]).
