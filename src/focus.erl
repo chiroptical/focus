@@ -2,7 +2,8 @@
 
 -export([
     server/0,
-    devlog/0
+    devlog/0,
+    cm/0
 ]).
 
 server() ->
@@ -10,3 +11,6 @@ server() ->
 
 devlog() ->
     supervisor_devlog:start_link().
+
+cm() ->
+    supervisor_credential_manager:start_link().

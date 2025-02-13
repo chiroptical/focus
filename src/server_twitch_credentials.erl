@@ -5,7 +5,6 @@
 -export([
     start_link/2,
     read_credentials/0,
-    read_credentials_inner/0,
     update_credentials/2
 ]).
 -export([
@@ -24,26 +23,29 @@
 }).
 
 start_link(ClientId, ClientSecret) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, {ClientId, ClientSecret}, []).
+    gen_server:start_link({global, ?MODULE}, ?MODULE, {ClientId, ClientSecret}, []).
 
-% TODO: we'll likely need erpc:multicall here as well
 update_credentials(AccessToken, RefreshToken) ->
-    gen_server:cast(?MODULE, {update, AccessToken, RefreshToken}).
-
-% TODO: What happens if you separate the credential manager from the devlog in
-% another node?
-read_credentials() ->
-    maybe
-        [{ok, {ok, {ClientId, AccessToken, RefreshToken}}}] =
-            erpc:multicall(nodes(), ?MODULE, read_credentials_inner, []),
-        {ok, {ClientId, AccessToken, RefreshToken}}
-    else
-        {no_credentials} ->
-            {error, no_credentials}
+    case global:whereis_name(?MODULE) of
+        undefined ->
+            ok;
+        Pid ->
+            gen_server:cast(Pid, {update, AccessToken, RefreshToken})
     end.
 
-read_credentials_inner() ->
-    gen_server:call(?MODULE, read).
+read_credentials() ->
+    case global:whereis_name(?MODULE) of
+        undefined ->
+            {error, no_manager_present};
+        Pid ->
+            maybe
+                {ok, Credentials} = gen_server:cast(Pid, read),
+                {ok, Credentials}
+            else
+                no_credentials ->
+                    {error, no_credentials}
+            end
+    end.
 
 -define(THIRTY_MINUTES_MS, 1_800_000).
 
@@ -91,7 +93,8 @@ handle_cast({update, AccessToken, RefreshToken}, State) ->
     %% Write the credentials to the filesystem
     create(NewState),
     {noreply, NewState};
-handle_cast(_Msg, State) ->
+handle_cast(Msg, State) ->
+    devlog:log(#{handle_cast => Msg}),
     {noreply, State}.
 
 handle_info(
