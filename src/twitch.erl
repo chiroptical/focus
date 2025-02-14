@@ -1,11 +1,12 @@
 -module(twitch).
 
 -export([
+    env/0,
     parse_message_type/1,
     message_action/2,
-    auth/0,
     subscribe/2,
     handle_notification/2,
+    user_id/1,
     msg/1,
     ban/1
 ]).
@@ -18,19 +19,17 @@ get_env(Key) ->
             {ok, list_to_binary(Value)}
     end.
 
-get_twitch_env() ->
+env() ->
     maybe
-        {ok, Secret} = get_env("TWITCH_SECRET"),
-        {ok, UserAccessToken} = get_env("TWITCH_USER_ACCESS_TOKEN"),
-        {ok, ClientId} = get_env("TWITCH_CLIENT_ID"),
-        {ok, RefreshToken} = get_env("TWITCH_REFRESH_TOKEN"),
-        {ok, UserId} = get_env("TWITCH_USER_ID"),
+        {ok, Secret} ?= get_env("TWITCH_SECRET"),
+        {ok, ClientId} ?= get_env("TWITCH_CLIENT_ID"),
+        {ok, UserId} ?= get_env("TWITCH_USER_ID"),
+        {ok, RedirectUri} ?= get_env("TWITCH_REDIRECT_URI"),
         {ok, #{
             secret => Secret,
-            user_access_token => UserAccessToken,
             client_id => ClientId,
-            refresh_token => RefreshToken,
-            user_id => UserId
+            user_id => UserId,
+            redirect_uri => RedirectUri
         }}
     else
         Err = {error, {key_not_set, _}} -> Err
@@ -39,9 +38,9 @@ get_twitch_env() ->
 % Session welcome https://dev.twitch.tv/docs/eventsub/websocket-reference/#welcome-message
 message_action(~"session_welcome", TwitchMessage) ->
     maybe
-        {ok, Payload} = maps:find(~"payload", TwitchMessage),
-        {ok, Session} = maps:find(~"session", Payload),
-        {ok, Id} = maps:find(~"id", Session),
+        {ok, Payload} ?= maps:find(~"payload", TwitchMessage),
+        {ok, Session} ?= maps:find(~"session", Payload),
+        {ok, Id} ?= maps:find(~"id", Session),
         {ok, {subscribe, Id}}
     else
         error ->
@@ -50,8 +49,8 @@ message_action(~"session_welcome", TwitchMessage) ->
 % Session keepalive https://dev.twitch.tv/docs/eventsub/websocket-reference/#keepalive-message
 message_action(~"session_keepalive", TwitchMessage) ->
     maybe
-        {ok, Metadata} = maps:find(~"metadata", TwitchMessage),
-        {ok, Timestamp} = maps:find(~"message_timestamp", Metadata),
+        {ok, Metadata} ?= maps:find(~"metadata", TwitchMessage),
+        {ok, Timestamp} ?= maps:find(~"message_timestamp", Metadata),
         {ok, {keepalive, Timestamp}}
     else
         error ->
@@ -60,12 +59,12 @@ message_action(~"session_keepalive", TwitchMessage) ->
 % Notification message https://dev.twitch.tv/docs/eventsub/websocket-reference/#notification-message
 message_action(~"notification", TwitchMessage) ->
     maybe
-        {ok, Payload} = maps:find(~"payload", TwitchMessage),
+        {ok, Payload} ?= maps:find(~"payload", TwitchMessage),
         % Get the message type
-        {ok, Subscription} = maps:find(~"subscription", Payload),
-        {ok, Type} = maps:find(~"type", Subscription),
+        {ok, Subscription} ?= maps:find(~"subscription", Payload),
+        {ok, Type} ?= maps:find(~"type", Subscription),
         % Get the event
-        {ok, Event} = maps:find(~"event", Payload),
+        {ok, Event} ?= maps:find(~"event", Payload),
         {ok, {notification, Type, Event}}
     else
         error ->
@@ -76,128 +75,120 @@ message_action(Msg, _TwitchMessage) ->
 
 parse_message_type(TwitchMessage) ->
     maybe
-        {ok, Metadata} = maps:find(~"metadata", TwitchMessage),
-        {ok, MessageType} = maps:find(~"message_type", Metadata),
+        {ok, Metadata} ?= maps:find(~"metadata", TwitchMessage),
+        {ok, MessageType} ?= maps:find(~"message_type", Metadata),
         {ok, MessageType}
     else
         error ->
             {error, unable_to_parse}
     end.
 
-post(TwitchEnv, Url, Payload, StatusExpected) ->
+post(Url, Payload, StatusExpected) ->
     maybe
-        {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
-        {ok, ClientId} = maps:find(client_id, TwitchEnv),
-        {ok, StatusExpected, _Headers, Body} = restc:request(
-            post,
-            json,
-            Url,
-            [StatusExpected],
-            [
-                {~"Authorization", <<"Bearer ", UserAccessToken/binary>>},
-                {~"Client-Id", ClientId}
-            ],
-            Payload,
-            []
-        ),
-        {ok, Body}
-    else
-        Err = {error, _} ->
-            Err;
-        {error, ErrStatus, _ErrHeaders, ErrBody} ->
-            {error, ErrStatus, ErrBody}
-    end.
-
-eventsub_subscription(TwitchEnv, Payload) ->
-    post(TwitchEnv, "https://api.twitch.tv/helix/eventsub/subscriptions", Payload, 202).
-
-%% Example: https://dev.twitch.tv/docs/api/reference/#create-eventsub-subscription
-subscribe(follows, WebsocketSessionId) ->
-    {ok, TwitchEnv} = get_twitch_env(),
-    {ok, UserId} = maps:find(user_id, TwitchEnv),
-    eventsub_subscription(
-        TwitchEnv,
-        #{
-            type => ~"channel.follow",
-            version => ~"2",
-            condition => #{
-                broadcaster_user_id => UserId,
-                moderator_user_id => UserId
-            },
-            transport => #{
-                method => websocket,
-                session_id => WebsocketSessionId
-            }
-        }
-    );
-subscribe(subscribers, WebsocketSessionId) ->
-    {ok, TwitchEnv} = get_twitch_env(),
-    {ok, UserId} = maps:find(user_id, TwitchEnv),
-    eventsub_subscription(
-        TwitchEnv,
-        #{
-            type => ~"channel.subscribe",
-            version => ~"1",
-            condition => #{
-                broadcaster_user_id => UserId
-            },
-            transport => #{
-                method => websocket,
-                session_id => WebsocketSessionId
-            }
-        }
-    );
-subscribe(chat, WebsocketSessionId) ->
-    {ok, TwitchEnv} = get_twitch_env(),
-    {ok, UserId} = maps:find(user_id, TwitchEnv),
-    eventsub_subscription(
-        TwitchEnv,
-        #{
-            type => ~"channel.chat.message",
-            version => ~"1",
-            condition => #{
-                broadcaster_user_id => UserId,
-                user_id => UserId
-            },
-            transport => #{
-                method => websocket,
-                session_id => WebsocketSessionId
-            }
-        }
-    ).
-
-auth() ->
-    maybe
-        {ok, TwitchEnv} = get_twitch_env(),
-        {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
-        {ok, 200, _Headers, Body} =
+        {ok, {ClientId, AccessToken, _}} ?= server_twitch_credentials:read_credentials(),
+        {ok, StatusExpected, _Headers, Body} ?=
             restc:request(
-                get,
+                post,
                 json,
-                "https://id.twitch.tv/oauth2/validate",
-                [200],
-                [{<<"Authorization">>, <<"OAuth ", UserAccessToken/binary>>}]
+                Url,
+                [StatusExpected],
+                [
+                    {~"Authorization", <<"Bearer ", AccessToken/binary>>},
+                    {~"Client-Id", ClientId}
+                ],
+                Payload,
+                []
             ),
         {ok, Body}
     else
         Err = {error, _} ->
             Err;
-        {error, Status, _ErrHeaders, ErrBody} ->
-            {error, Status, ErrBody}
+        {error, ErrStatus, _ErrHeaders, ErrBody} ->
+            {error, {ErrStatus, ErrBody}}
     end.
 
-twitch_user_id(TwitchEnv, UserName) ->
+eventsub_subscription(Payload) ->
+    post("https://api.twitch.tv/helix/eventsub/subscriptions", Payload, 202).
+
+%% Example: https://dev.twitch.tv/docs/api/reference/#create-eventsub-subscription
+subscribe(follows, WebsocketSessionId) ->
     maybe
-        {ok, ClientId} = maps:find(client_id, TwitchEnv),
-        {ok, UserAccessToken} = maps:find(user_access_token, TwitchEnv),
-        {ok, 200, _Headers, Body} =
+        {ok, TwitchEnv} ?= env(),
+        {ok, UserId} ?= maps:find(user_id, TwitchEnv),
+        eventsub_subscription(
+            #{
+                type => ~"channel.follow",
+                version => ~"2",
+                condition => #{
+                    broadcaster_user_id => UserId,
+                    moderator_user_id => UserId
+                },
+                transport => #{
+                    method => websocket,
+                    session_id => WebsocketSessionId
+                }
+            }
+        )
+    else
+        {error, _} = Err ->
+            Err
+    end;
+subscribe(subscribers, WebsocketSessionId) ->
+    maybe
+        {ok, TwitchEnv} ?= env(),
+        {ok, UserId} ?= maps:find(user_id, TwitchEnv),
+        eventsub_subscription(
+            #{
+                type => ~"channel.subscribe",
+                version => ~"1",
+                condition => #{
+                    broadcaster_user_id => UserId
+                },
+                transport => #{
+                    method => websocket,
+                    session_id => WebsocketSessionId
+                }
+            }
+        )
+    else
+        {error, _} = Err ->
+            Err
+    end;
+subscribe(chat, WebsocketSessionId) ->
+    maybe
+        {ok, TwitchEnv} ?= env(),
+        {ok, UserId} ?= maps:find(user_id, TwitchEnv),
+        eventsub_subscription(
+            #{
+                type => ~"channel.chat.message",
+                version => ~"1",
+                condition => #{
+                    broadcaster_user_id => UserId,
+                    user_id => UserId
+                },
+                transport => #{
+                    method => websocket,
+                    session_id => WebsocketSessionId
+                }
+            }
+        )
+    else
+        {error, _} = Err ->
+            Err
+    end.
+
+user_id(UserName) ->
+    maybe
+        {ok, {ClientId, AccessToken, _RefreshToken}} ?=
+            server_twitch_credentials:read_credentials(),
+        {ok, 200, _Headers, Body} ?=
             restc:request(
                 get,
                 json,
                 restc:construct_url("https://api.twitch.tv/helix/users", [{"login", UserName}]),
                 [200],
                 [
-                    {<<"Authorization">>, <<"Bearer ", UserAccessToken/binary>>},
+                    {<<"Authorization">>, <<"Bearer ", AccessToken/binary>>},
                     {~"Client-Id", ClientId}
                 ]
             ),
@@ -206,55 +197,57 @@ twitch_user_id(TwitchEnv, UserName) ->
         Err = {error, _} ->
             Err;
         {error, Status, _ErrHeaders, ErrBody} ->
-            {error, Status, ErrBody}
+            {error, {Status, ErrBody}}
     end.
+
+safe_head([X]) ->
+    {ok, X};
+safe_head(_) ->
+    {error, not_a_singleton_list}.
 
 ban(UserName) when is_binary(UserName) ->
     maybe
-        {ok, TwitchEnv} = get_twitch_env(),
-        {ok, StreamerId} = maps:find(user_id, TwitchEnv),
-        {ok, UserResponse} = twitch_user_id(TwitchEnv, UserName),
-        {ok, Data} = maps:find(~"data", UserResponse),
-        case Data of
-            [UserData] ->
-                UserId = maps:find(~"id", UserData),
-                {ok, _Body} =
-                    post(
-                        TwitchEnv,
-                        restc:construct_url(
-                            "https://api.twitch.tv/helix/moderation/bans",
-                            [
-                                {"broadcaster_id", binary_to_list(StreamerId)},
-                                {"moderator_id", binary_to_list(StreamerId)}
-                            ]
-                        ),
+        % Grab the streamer id from the environment variable
+        {ok, TwitchEnv} ?= env(),
+        {ok, StreamerId} ?= maps:find(user_id, TwitchEnv),
+        % As Twitch what the user_id of a particular user is
+        {ok, UserResponse} ?= user_id(UserName),
+        {ok, {_, UserDataList}} ?= safe_head(UserResponse),
+        {ok, UserData} ?= safe_head(UserDataList),
+        UserDataMap = proplists:to_map(UserData),
+        {ok, UserId} ?= maps:find(~"id", UserDataMap),
+        % Ban that user into oblivion
+        {ok, _Body} ?=
+            post(
+                restc:construct_url(
+                    "https://api.twitch.tv/helix/moderation/bans",
+                    [
+                        {"broadcaster_id", binary_to_list(StreamerId)},
+                        {"moderator_id", binary_to_list(StreamerId)}
+                    ]
+                ),
+                #{
+                    data =>
                         #{
-                            data => [
-                                #{
-                                    user_id => UserId
-                                }
-                            ]
-                        },
-                        200
-                    ),
-                ok;
-            _ ->
-                unable_to_find_user_data
-        end
+                            user_id => UserId
+                        }
+                },
+                200
+            ),
+        ok
     else
         Err = {error, _} ->
             Err;
         {error, Status, _ErrHeaders, ErrBody} ->
-            {error, Status, ErrBody}
+            {error, {Status, ErrBody}}
     end.
 
 msg(Message) when is_binary(Message) ->
     maybe
-        {ok, TwitchEnv} = get_twitch_env(),
-        {ok, UserId} = maps:find(user_id, TwitchEnv),
-        {ok, _Body} =
+        {ok, TwitchEnv} ?= env(),
+        {ok, UserId} ?= maps:find(user_id, TwitchEnv),
+        {ok, _Body} ?=
             post(
-                TwitchEnv,
                 "https://api.twitch.tv/helix/chat/messages",
                 #{
                     broadcaster_id => UserId,
@@ -266,9 +259,7 @@ msg(Message) when is_binary(Message) ->
         ok
     else
         Err = {error, _} ->
-            Err;
-        {error, Status, _ErrHeaders, ErrBody} ->
-            {error, Status, ErrBody}
+            Err
     end.
 
 from_tier(~"1000") ->
@@ -280,28 +271,28 @@ from_tier(~"3000") ->
 
 display_subscription(true, Chatter, Tier) ->
     io_lib:format(
-        "~s was gifted a ~s sub, I appreciate you!~n",
+        "~ts was gifted a ~ts sub, I appreciate you!~n",
         [color:true("0096FF", Chatter), from_tier(Tier)]
     );
 display_subscription(false, Chatter, Tier) ->
     io_lib:format(
-        "~s subscribed at ~s, I appreciate you!~n",
+        "~ts subscribed at ~ts, I appreciate you!~n",
         [color:true("0096FF", Chatter), from_tier(Tier)]
     ).
 
 handle_notification(~"channel.chat.message", Event) ->
     maybe
-        {ok, Chatter} = maps:find(~"chatter_user_name", Event),
-        {ok, Color} = maps:find(~"color", Event),
+        {ok, Chatter} ?= maps:find(~"chatter_user_name", Event),
+        {ok, Color} ?= maps:find(~"color", Event),
         ColorWithDefault =
             case Color of
-                <<>> -> "6495ED";
+                <<>> -> ~"6495ED";
                 Color -> Color
             end,
         {_, Hex} = string:take(binary_to_list(ColorWithDefault), "#"),
-        {ok, Message} = maps:find(~"message", Event),
-        {ok, MessageText} = maps:find(~"text", Message),
-        Chat = io_lib:format("[~s] ~s~n", [color:true(Hex, Chatter), MessageText]),
+        {ok, Message} ?= maps:find(~"message", Event),
+        {ok, MessageText} ?= maps:find(~"text", Message),
+        Chat = io_lib:format("[~ts] ~ts~n", [color:true(Hex, Chatter), MessageText]),
         logger:notice(Chat)
     else
         {error, _} ->
@@ -309,9 +300,9 @@ handle_notification(~"channel.chat.message", Event) ->
     end;
 handle_notification(~"channel.subscribe", Event) ->
     maybe
-        {ok, Chatter} = maps:find(~"user_name", Event),
-        {ok, Tier} = maps:find(~"tier", Event),
-        {ok, IsGifted} = maps:find(~"is_gift", Event),
+        {ok, Chatter} ?= maps:find(~"user_name", Event),
+        {ok, Tier} ?= maps:find(~"tier", Event),
+        {ok, IsGifted} ?= maps:find(~"is_gift", Event),
         Chat = display_subscription(IsGifted, Chatter, Tier),
         logger:notice(Chat)
     else
@@ -320,8 +311,8 @@ handle_notification(~"channel.subscribe", Event) ->
     end;
 handle_notification(~"channel.follow", Event) ->
     maybe
-        {ok, Chatter} = maps:find(~"user_name", Event),
-        Chat = io_lib:format("Thanks for following ~s!~n", [color:true("C3B1E1", Chatter)]),
+        {ok, Chatter} ?= maps:find(~"user_name", Event),
+        Chat = io_lib:format("Thanks for following ~ts!~n", [color:true("C3B1E1", Chatter)]),
         logger:notice(Chat)
     else
         {error, _} ->
