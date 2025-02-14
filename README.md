@@ -102,14 +102,14 @@ and `cm`. The second is the one displayed on stream and runs the `server`.
 $ rebar3 shell --sname=devlog
 (devlog@Barrys-MacBook-Air)1> focus:devlog().
 {ok, ...}
-(devlog@Barrys-MacBook-Air)1> focus:cm().
+(devlog@Barrys-MacBook-Air)2> focus:cm().
 {ok, ...}
 
 # In on-stream terminal
 $ rebar3 shell --sname=focus
 (focus@Barrys-MacBook-Air)1> net_adm:ping('devlog@Barrys-MacBook-Air').
 pong
-(focus@Barrys-MacBook-Air)1> focus:server().
+(focus@Barrys-MacBook-Air)2> focus:server().
 {ok, ...}
 ```
 
