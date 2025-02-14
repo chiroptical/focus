@@ -1,21 +1,38 @@
 -module(twitch_auth).
 
 -export([
+    validate/0,
     validate/1,
     refresh_token/3,
     token/4
 ]).
 
+validate_request(AccessToken) ->
+    restc:request(
+        get,
+        json,
+        "https://id.twitch.tv/oauth2/validate",
+        [200, 401],
+        [{<<"Authorization">>, <<"OAuth ", AccessToken/binary>>}]
+    ).
+
+validate() ->
+    maybe
+        {ok, {_ClientId, AccessToken, _RefreshToken}} ?=
+            server_twitch_credentials:read_credentials(),
+        {ok, 200, _Headers, Body} ?= validate_request(AccessToken),
+        devlog:log(#{validate => Body}),
+        ok
+    else
+        {ok, 401, _, _} ->
+            {error, refresh_token};
+        {error, _} = Err ->
+            Err
+    end.
+
 validate(AccessToken) ->
     maybe
-        {ok, Status, _Headers, Body} ?=
-            restc:request(
-                get,
-                json,
-                "https://id.twitch.tv/oauth2/validate",
-                [200, 401],
-                [{<<"Authorization">>, <<"OAuth ", AccessToken/binary>>}]
-            ),
+        {ok, Status, _Headers, Body} ?= validate_request(AccessToken),
         case Status of
             200 ->
                 utils_proplists:find(~"expires_in", Body);

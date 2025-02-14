@@ -6,6 +6,7 @@
     message_action/2,
     subscribe/2,
     handle_notification/2,
+    user_id/1,
     msg/1,
     ban/1
 ]).
@@ -177,9 +178,10 @@ subscribe(chat, WebsocketSessionId) ->
             Err
     end.
 
-twitch_user_id(UserName) ->
+user_id(UserName) ->
     maybe
-        {ok, {ClientId, AccessToken}} ?= server_twitch_credentials:read_credentials(),
+        {ok, {ClientId, AccessToken, _RefreshToken}} ?=
+            server_twitch_credentials:read_credentials(),
         {ok, 200, _Headers, Body} ?=
             restc:request(
                 get,
@@ -210,7 +212,7 @@ ban(UserName) when is_binary(UserName) ->
         {ok, TwitchEnv} ?= env(),
         {ok, StreamerId} ?= maps:find(user_id, TwitchEnv),
         % As Twitch what the user_id of a particular user is
-        {ok, UserResponse} ?= twitch_user_id(UserName),
+        {ok, UserResponse} ?= user_id(UserName),
         {ok, {_, UserDataList}} ?= safe_head(UserResponse),
         {ok, UserData} ?= safe_head(UserDataList),
         UserDataMap = proplists:to_map(UserData),

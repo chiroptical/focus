@@ -24,7 +24,6 @@ view(Msg) ->
         end
     ]).
 
-%% TODO: We don't need to redirect to /oauth/begin first
 init(#{path := ~"/", method := ~"GET"} = Req0, State) ->
     #{message := Message} = cowboy_req:match_qs([{message, [], ~""}], Req0),
     View = view(Message),

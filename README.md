@@ -8,7 +8,6 @@ Developed live on [![Chiroptical](https://img.shields.io/badge/twitch.tv-chiropt
 TODO
 ---
 
-- [ ] Test the oauth server by removing `~/.local/share/focus`
 - [ ] Separate `twitch` module into `twitch_auth`, `twitch_api`, `twitch_websocket`
 - [ ] Break up `twitch:subscribe/2` into more specific functions
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#reconnect-message
@@ -31,7 +30,7 @@ TODO
 Environment variables and set up
 ----
 
-You'll need to set the following environment variables to use focus.
+You'll need to set the following environment variables to use the focus server.
 
 ```
 export TWITCH_CLIENT_ID='...'
@@ -70,6 +69,13 @@ You can stop the oauth server once this is done and continue with the set up,
 
 ```console
 4> focus:oauth(stop).
+ok
+```
+
+If you didn't know your `TWITCH_USER_ID` you can now get it with,
+
+```console
+5> twitch_auth:validate().
 ok
 ```
 
