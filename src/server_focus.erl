@@ -43,9 +43,9 @@ handle_info(
         {ok, TwitchMessage} ->
             maybe
                 devlog:log(#{decoded_twitch_message => TwitchMessage}),
-                {ok, MessageType} = twitch:parse_message_type(TwitchMessage),
+                {ok, MessageType} ?= twitch:parse_message_type(TwitchMessage),
                 devlog:log(#{parsed_twitch_message => MessageType}),
-                {ok, MessageAction} = twitch:message_action(MessageType, TwitchMessage),
+                {ok, MessageAction} ?= twitch:message_action(MessageType, TwitchMessage),
                 devlog:log(#{twitch_message_action => MessageAction}),
                 gen_server:cast(self(), MessageAction)
             else
@@ -68,7 +68,7 @@ handle_call(Msg, _From, State) ->
 handle_cast({subscribe, WebsocketSessionId} = Action, State) ->
     maybe
         devlog:log(#{attempting => Action}),
-        {ok, Body} = twitch:subscribe(chat, WebsocketSessionId),
+        {ok, Body} ?= twitch:subscribe(chat, WebsocketSessionId),
         devlog:log(#{completed => Action, got => Body}),
         gen_server:cast(self(), {subscribe, follows, WebsocketSessionId}),
         gen_server:cast(self(), {subscribe, subscribers, WebsocketSessionId}),
@@ -81,7 +81,7 @@ handle_cast({subscribe, WebsocketSessionId} = Action, State) ->
 handle_cast({subscribe, follows, WebsocketSessionId} = Action, State) ->
     maybe
         devlog:log(#{attempting => Action}),
-        {ok, Body} = twitch:subscribe(follows, WebsocketSessionId),
+        {ok, Body} ?= twitch:subscribe(follows, WebsocketSessionId),
         devlog:log(#{completed => Action, got => Body})
     else
         Err ->
@@ -91,7 +91,7 @@ handle_cast({subscribe, follows, WebsocketSessionId} = Action, State) ->
 handle_cast({subscribe, subscribers, WebsocketSessionId} = Action, State) ->
     maybe
         devlog:log(#{attempting => Action}),
-        {ok, Body} = twitch:subscribe(subscribers, WebsocketSessionId),
+        {ok, Body} ?= twitch:subscribe(subscribers, WebsocketSessionId),
         devlog:log(#{completed => Action, got => Body})
     else
         Err ->
@@ -113,8 +113,8 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 handle_continue(upgrade_connection, #state{gun_connection_pid = ConnPid} = State) ->
-    devlog:log(awaiting_gun_up),
+    devlog:log(#{start => awaiting_gun_up}),
     {ok, _Protocol} = gun:await_up(ConnPid),
-    devlog:log(start_ws_upgrade),
+    devlog:log(#{start => ws_upgrade}),
     gun:ws_upgrade(ConnPid, "/ws"),
     {noreply, State}.
