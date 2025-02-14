@@ -44,9 +44,19 @@ handle_info(
             maybe
                 devlog:log(#{decoded_twitch_message => TwitchMessage}),
                 {ok, MessageType} ?= twitch:parse_message_type(TwitchMessage),
-                devlog:log(#{parsed_twitch_message => MessageType}),
+                case MessageType =:= ~"session_keepalive" of
+                    true ->
+                        ok;
+                    false ->
+                        devlog:log(#{parsed_twitch_message => MessageType})
+                end,
                 {ok, MessageAction} ?= twitch:message_action(MessageType, TwitchMessage),
-                devlog:log(#{twitch_message_action => MessageAction}),
+                case MessageType =:= ~"session_keepalive" of
+                    true ->
+                        ok;
+                    false ->
+                        devlog:log(#{twitch_message_action => MessageAction})
+                end,
                 gen_server:cast(self(), MessageAction)
             else
                 {error, GotError} ->
@@ -99,7 +109,6 @@ handle_cast({subscribe, subscribers, WebsocketSessionId} = Action, State) ->
     end,
     {noreply, State};
 handle_cast({keepalive, Timestamp}, State) ->
-    devlog:log(#{keepalive => Timestamp}),
     {noreply, State#state{keepalive = Timestamp}};
 handle_cast({notification, Type, Event} = Notification, State) ->
     devlog:log(#{attempting => Notification}),
