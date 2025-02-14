@@ -103,32 +103,33 @@ handle_info(
 ) ->
     erlang:send_after(?THIRTY_MINUTES_MS, self(), check_credentials),
 
-    maybe
-        case twitch_auth:validate(AccessToken) of
-            {ok, ExpiresIn} when ExpiresIn =< 1800 ->
+    case twitch_auth:validate(AccessToken) of
+        {ok, ExpiresIn} when ExpiresIn =< 1800 ->
+            maybe
                 {ok, NewAccessToken, NewRefreshToken} ?=
                     check_credentials(State, refresh),
                 {noreply, State#twitch_credentials{
                     access_token = NewAccessToken, refresh_token = NewRefreshToken
-                }};
-            {ok, _ExpiresIn} ->
-                {noreply, State};
-            {error, refresh_token} ->
-                {ok, NewAccessToken, NewRefreshToken} ?=
-                    check_credentials(State, refresh),
-                {noreply, State#twitch_credentials{
-                    access_token = NewAccessToken, refresh_token = NewRefreshToken
-                }};
-            {error, Error} ->
-                devlog:log(#{handle_info => check_credentials, error => Error}),
-                {noreply, State}
-        end
-    else
-        {error, needs_oauth_flow} ->
-            logger:log("Run the oauth code!"),
+                }}
+            else
+                {error, _} = Err ->
+                    Err
+            end;
+        {ok, _ExpiresIn} ->
             {noreply, State};
-        {error, Err} ->
-            devlog:log(#{handle_info => check_credentials, error => Err}),
+        {error, refresh_token} ->
+            maybe
+                {ok, NewAccessToken, NewRefreshToken} ?=
+                    check_credentials(State, refresh),
+                {noreply, State#twitch_credentials{
+                    access_token = NewAccessToken, refresh_token = NewRefreshToken
+                }}
+            else
+                {error, _} = Err ->
+                    Err
+            end;
+        {error, Error} ->
+            devlog:log(#{handle_info => check_credentials, error => Error}),
             {noreply, State}
     end;
 handle_info(_Msg, State) ->

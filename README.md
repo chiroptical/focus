@@ -10,9 +10,7 @@ TODO
 
 - [ ] Test the oauth server by removing `~/.local/share/focus`
 - [ ] Separate `twitch` module into `twitch_auth`, `twitch_api`, `twitch_websocket`
-- [ ] The `twitch_api` module should fetch credentials for requests from the manager
 - [ ] Break up `twitch:subscribe/2` into more specific functions
-- [ ] See https://github.com/chiroptical/focus/issues/2
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#reconnect-message
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#revocation-message
 - [ ] Handle https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#close-message
@@ -38,65 +36,77 @@ You'll need to set the following environment variables to use focus.
 ```
 export TWITCH_CLIENT_ID='...'
 export TWITCH_SECRET='...'
-export TWITCH_REDIRECT_URI='http://localhost:3000/oauth'
-export TWITCH_USER_ACCESS_TOKEN='...'
-export TWITCH_REFRESH_TOKEN='...'
+export TWITCH_REDIRECT_URI='http://localhost:8080/oauth/end'
 export TWITCH_USER_ID='...'
 ```
 
 You can get your client id and secret by registering an application at
-`https://dev.twitch.tv/console`. Once those are set, you currently need to get
-`twitch-cli` (https://dev.twitch.tv/docs/cli/). I get it from through my nix
-shell.
+https://dev.twitch.tv/console. Make sure the oauth redirect uri is set to
+http://localhost:8080/oauth/end`. Once those are set, you'll need to set up
+oauth credentials. Open a shell,
 
-```
-twitch-cli configure -i $TWITCH_CLIENT_ID -s $TWITCH_SECRET # assuming you have already set these
-twitch-cli token --user-token --scopes "user:read:chat user:write:chat moderator:read:followers channel:read:subscriptions"
+```console
+$ rebar3 shell
+
+1> focus:devlog().
+{ok, ...}
+2> focus:cm().
+{ok, ...}
+3> focus:oauth(start).
+{ok, ...}
 ```
 
-The tool will open a webserver at port 3000 and run the oauth flow for you.
-You will need to set your "OAuth Redirect URLs"  to `http://localhost:3000`
-for this step to work. This will allow you to add your user access token and
-refresh token. Once all of that is exported, you can run `rebar3 shell` and
-`twitch:auth()` should get you your user id. If that doesn't work, you have
-configured something incorrectly.
+This starts the devlog service, credential manager service, and oauth service.
+DO NO SHOW THIS ON STREAM, it could leak credentials. Navigate to
+http://localhost:8080, click `Begin`, fill out Twitch details, it should navigate to
+a page that says `All set!`. If it does not, please file a bug report being
+careful not to leak any of your secrets please!
+
+This will store your credentials on your filesystem in your `user_data`
+directory according to Erlang's
+[filename](https://www.erlang.org/doc/apps/stdlib/filename.html#basedir/3) library.
+
+You can stop the oauth server once this is done and continue with the set up,
+
+```console
+4> focus:oauth(stop).
+ok
+```
 
 Running focus
 ---
 
-Open two terminal windows, the first one I'll refer to as 'focus' and the second
-'devlog'. The focus terminal will display events from Twitch, e.g. messages,
-followers, subscribers. The devlog terminal will display **all** of the event
-data being ingested and processed to make that happen. The devlog terminal is
-**not** meant to be seen by your viewers!
+Focus is built up from four services, you've seen three in the previous section
 
-In the focus terminal, run the following `rebar3 focus` this will start the
-erlang development shell with a name e.g. on my machine,
+- `focus:devlog()`: prints logs from Twitch websockets, requests, and focus
+  services
+- `focus:cm()`: the credential manager reads, stores, and refreshes the Twitch
+   OAuth token
+- `focus:server()`: the server which displays Twitch chat, follower, and
+   subscriber notifications which arrive on the websocket
+- `focus:oauth(start)`: the oauth server for fetching tokens from Twitch if your
+   setting up for the first time or your refresh token is revoked
 
-```
-(focus@wilder)1>
-```
+If you have valid credentials, you'll want to start the `devlog`, `cm`, and `server`.
+When I stream, I open two terminal windows. The first is off-stream and runs `devlog`
+and `cm`. The second is the one displayed on stream and runs the `server`.
 
-The value in parentheses is known as the "node name" and this is how you
-connect erlang nodes together. We'll do that shortly. In the focus erlang
-shell, run `focus:server().`. The server is now running and if you
-configured it correctly you should recieve messages, follows, subs.
+```console
+# In off-stream terminal
+$ rebar3 shell --sname=devlog
+(devlog@Barrys-MacBook-Air)1> focus:devlog().
+{ok, ...}
+(devlog@Barrys-MacBook-Air)1> focus:cm().
+{ok, ...}
 
-In the devlog terminal, run the following `rebar3 devlog` this will start
-the erlang development shell with a name, e.g. on my machine,
-
-```
-(devlog@wilder)1>
-```
-
-In the devlog log, run the following commands,
-
-```
-(devlog@wilder)1> net_adm:ping('focus@wilder').
+# In on-stream terminal
+$ rebar3 shell --sname=focus
+(focus@Barrys-MacBook-Air)1> net_adm:ping('devlog@Barrys-MacBook-Air').
 pong
-(devlog@wilder)2> focus:devlog().
-{ok, <0.400.0>}
+(focus@Barrys-MacBook-Air)1> focus:server().
+{ok, ...}
 ```
 
-If you see, `pong` and an `ok` tuple you should start seeing keepalive messages
-in the devlog erlang shell.
+If you don't get `{ok, Pid}` from the services and `pong` from `net_adm:ping`
+something has gone wrong. Please check you've followed the directions and submit
+an issue otherwise. Be careful not to leak your credentials.
