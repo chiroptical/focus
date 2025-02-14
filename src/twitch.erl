@@ -111,7 +111,6 @@ eventsub_subscription(Payload) ->
     post("https://api.twitch.tv/helix/eventsub/subscriptions", Payload, 202).
 
 %% Example: https://dev.twitch.tv/docs/api/reference/#create-eventsub-subscription
-%% TODO: Use 'maybe' here to avoid env/0 or find/2 from failing
 subscribe(follows, WebsocketSessionId) ->
     maybe
         {ok, TwitchEnv} ?= env(),
@@ -260,9 +259,7 @@ msg(Message) when is_binary(Message) ->
         ok
     else
         Err = {error, _} ->
-            Err;
-        {error, Status, _ErrHeaders, ErrBody} ->
-            {error, {Status, ErrBody}}
+            Err
     end.
 
 from_tier(~"1000") ->
