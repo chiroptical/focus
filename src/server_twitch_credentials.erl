@@ -39,7 +39,7 @@ read_credentials() ->
             {error, no_manager_present};
         Pid ->
             maybe
-                {ok, Credentials} ?= gen_server:cast(Pid, read),
+                {ok, Credentials} ?= gen_server:call(Pid, read),
                 {ok, Credentials}
             else
                 no_credentials ->
