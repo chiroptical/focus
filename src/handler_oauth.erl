@@ -45,15 +45,15 @@ init(#{path := ~"/oauth/begin", method := ~"GET"} = Req0, State) ->
             "https://id.twitch.tv",
             "oauth2/authorize",
             [
-                {"client_id", ClientId},
-                {"redirect_uri", RedirectUri},
+                {"client_id", binary_to_list(ClientId)},
+                {"redirect_uri", binary_to_list(RedirectUri)},
                 {"response_type", "code"},
                 {"scope",
-                    <<"user:read:chat ",
-                        "user:write:chat "
-                        "moderator:read:followers "
-                        "channel:read:subscriptions">>},
-                {"state", CsrfToken}
+                    "user:read:chat "
+                    "user:write:chat "
+                    "moderator:read:followers "
+                    "channel:read:subscriptions"},
+                {"state", binary_to_list(CsrfToken)}
             ]
         ),
         Req = cowboy_req:reply(

@@ -1,11 +1,11 @@
 -module(utils_json).
 
 -export([
-    decode/1
+    decode_object/1
 ]).
 
-%% TODO: technically, this should parse more than just maps
-decode(Bin) ->
+-spec decode_object(binary()) -> {ok, map()} | {error, _}.
+decode_object(Bin) ->
     try json:decode(Bin) of
         Map when is_map(Map) -> {ok, Map}
     catch

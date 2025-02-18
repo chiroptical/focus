@@ -39,29 +39,15 @@ handle_info(
     {gun_ws, ConnPid, _StreamRef, {text, JsonBody}},
     #state{gun_connection_pid = ConnPid} = State
 ) ->
-    case utils_json:decode(JsonBody) of
-        {ok, TwitchMessage} ->
-            maybe
-                devlog:log(#{decoded_twitch_message => TwitchMessage}),
-                {ok, MessageType} ?= twitch:parse_message_type(TwitchMessage),
-                case MessageType =:= ~"session_keepalive" of
-                    true ->
-                        ok;
-                    false ->
-                        devlog:log(#{parsed_twitch_message => MessageType})
-                end,
-                {ok, MessageAction} ?= twitch:message_action(MessageType, TwitchMessage),
-                case MessageType =:= ~"session_keepalive" of
-                    true ->
-                        ok;
-                    false ->
-                        devlog:log(#{twitch_message_action => MessageAction})
-                end,
-                gen_server:cast(self(), MessageAction)
-            else
-                {error, GotError} ->
-                    devlog:log(#{twitch_message_error => GotError})
-            end;
+    maybe
+        {ok, TwitchMessage} ?= utils_json:decode_object(JsonBody),
+        devlog:log(#{decoded_twitch_message => TwitchMessage}),
+        {ok, MessageType} ?= twitch:parse_message_type(TwitchMessage),
+        log_no_keepalive(MessageType, #{parsed_twitch_message => MessageType}),
+        {ok, MessageAction} ?= twitch:message_action(MessageType, TwitchMessage),
+        log_no_keepalive(MessageType, #{twitch_message_action => MessageAction}),
+        gen_server:cast(self(), MessageAction)
+    else
         {error, _} ->
             devlog:log(#{unable_to_parse_twitch_message => JsonBody})
     end,
@@ -127,3 +113,11 @@ handle_continue(upgrade_connection, #state{gun_connection_pid = ConnPid} = State
     devlog:log(#{start => ws_upgrade}),
     gun:ws_upgrade(ConnPid, "/ws"),
     {noreply, State}.
+
+log_no_keepalive(MessageType, Log) ->
+    case MessageType =:= ~"session_keepalive" of
+        true ->
+            ok;
+        false ->
+            devlog:log(Log)
+    end.

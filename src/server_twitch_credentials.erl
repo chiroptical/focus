@@ -216,7 +216,7 @@ read(ClientId) ->
     maybe
         Filename = make_filename(ClientId),
         {ok, Contents} ?= file:read_file(Filename),
-        Decoded = json:decode(Contents),
+        {ok, Decoded} ?= utils_json:decode_object(Contents),
         AccessToken = maps:get(~"access_token", Decoded, none),
         RefreshToken = maps:get(~"refresh_token", Decoded, none),
         {ok, AccessToken, RefreshToken}
